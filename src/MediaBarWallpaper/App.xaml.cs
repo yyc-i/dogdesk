@@ -1,13 +1,30 @@
 using System.Windows;
 using MediaBarWallpaper.Services;
 using MediaBarWallpaper.Services.Mpv;
+using MediaBarWallpaper.Services.MusicSource;
+using MediaBarWallpaper.Services.Playback;
 
 namespace MediaBarWallpaper;
 
 public partial class App : System.Windows.Application
 {
-    /// <summary>全局媒体会话：SMTC 真实会话，无播放器时自动回退演示数据。</summary>
-    public IMediaSession MediaSession { get; } = new SmtcMediaSession();
+    /// <summary>系统 SMTC 真实媒体会话（无播放器时回退演示数据）。</summary>
+    public SmtcMediaSession SystemMedia { get; } = new();
+
+    /// <summary>内置 libmpv 音频播放内核（本地曲库/在线/Navidrome）。</summary>
+    public MpvAudioPlayer BuiltinPlayer { get; }
+
+    /// <summary>会话路由：媒体条/歌词/全屏歌词统一观察此会话，内置与 SMTC 自动切换。</summary>
+    public IMediaSession MediaSession { get; }
+
+    /// <summary>共享播放队列（内置会话驱动）。</summary>
+    public PlaybackQueue Queue { get; } = new();
+
+    /// <summary>在线音源（网易云，第三方非官方）。</summary>
+    public NeteaseMusicSource Netease { get; } = new();
+
+    /// <summary>Navidrome（自建 Subsonic）客户端。</summary>
+    public NavidromeClient Navidrome { get; } = new();
 
     /// <summary>全局唯一的壁纸引擎。</summary>
     public WallpaperEngine Wallpaper { get; } = new WallpaperEngine();
@@ -23,15 +40,22 @@ public partial class App : System.Windows.Application
 
     private TrayService? _tray;
 
+    public App()
+    {
+        BuiltinPlayer = new MpvAudioPlayer();
+        MediaSession = new MediaSessionRouter(SystemMedia, BuiltinPlayer);
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnMainWindowClose;
 
-        // 预加载 libmpv 视频内核；缺失/失败不致命，视频壁纸自动回退 MediaElement
+        // 预加载 libmpv 内核；缺失/失败不致命（视频壁纸回退 MediaElement，内置音频整体降级）
         MpvNativeLoader.TryPreload();
 
-        var main = new MainWindow(MediaSession, Wallpaper, Spectrum, Lyrics, Settings);
+        var main = new MainWindow(MediaSession, SystemMedia, BuiltinPlayer, Queue, Netease, Navidrome,
+            Wallpaper, Spectrum, Lyrics, Settings);
         MainWindow = main;
 
         // 设置要求自启但快捷方式缺失时补建（非侵入：仅启动文件夹）
@@ -58,7 +82,9 @@ public partial class App : System.Windows.Application
         main.Show();
 
         // 后台接入真实系统媒体会话（SMTC 不可用时保持演示数据，不阻塞启动）
-        _ = ((SmtcMediaSession)MediaSession).InitializeAsync();
+        _ = SystemMedia.InitializeAsync();
+
+        main.OnAppStarted();
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -68,6 +94,7 @@ public partial class App : System.Windows.Application
         _tray = null;
         Spectrum.Dispose();
         Wallpaper.Dispose();
+        BuiltinPlayer.Dispose();
         base.OnExit(e);
     }
 }

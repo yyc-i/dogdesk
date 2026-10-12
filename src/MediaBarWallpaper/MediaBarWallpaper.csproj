@@ -19,11 +19,13 @@
     <MpvWindowsArm64Enabled>false</MpvWindowsArm64Enabled>
     <!-- WPF 以 manifest 声明 PerMonitorV2 是正确做法，抑制 WinForms 对此的 WFAC010 警告 -->
     <NoWarn>WFAC010</NoWarn>
-    <Version>0.4.0</Version>
-    <Description>任务栏媒体控制条 + 动态壁纸（libmpv 全格式渲染 + SMTC + 频谱律动 + 歌词 + 多显示器）</Description>
+    <Version>0.5.0</Version>
+    <Description>任务栏媒体控制条 + 动态壁纸（libmpv 全格式渲染 + SMTC/内置音频路由 + 频谱律动 + 桌面歌词 + 本地曲库 + 在线音源 + Navidrome + 10 段均衡器 + 全屏沉浸式歌词 + 多显示器）</Description>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- 跨平台共享核心库（模型/设置/歌词/频谱数学/播放队列/在线音源/均衡器） -->
+    <ProjectReference Include="..\MediaBarWallpaper.Core\MediaBarWallpaper.Core.csproj" />
     <!-- WASAPI loopback 音频捕获 + FFT（频谱壁纸联动） -->
     <PackageReference Include="Endpne.LibMPV.Windows" Version="0.41.0" />
     <PackageReference Include="Lyricify.Lyrics.Helper" Version="0.2.0" />

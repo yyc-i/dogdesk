@@ -11,3 +11,6 @@ libmpv/
 
 # 临时/打包
 *.zip
+
+# 打包产物（本地交付，不入库）
+artifacts-mac/

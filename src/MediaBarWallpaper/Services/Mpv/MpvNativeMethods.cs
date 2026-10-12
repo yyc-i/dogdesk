@@ -51,6 +51,28 @@ internal static class MpvNative
         [MarshalAs(UnmanagedType.LPUTF8Str)] string name,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string data);
 
+    // —— 类型化属性读写（音频内核用于 time-pos / pause / duration 的直接读写）——
+
+    [DllImport(Dll, EntryPoint = "mpv_get_property")]
+    public static extern int GetProperty(IntPtr ctx,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int format, out double data);
+
+    [DllImport(Dll, EntryPoint = "mpv_set_property")]
+    public static extern int SetProperty(IntPtr ctx,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int format, ref double data);
+
+    [DllImport(Dll, EntryPoint = "mpv_get_property")]
+    public static extern int GetPropertyFlag(IntPtr ctx,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int format, out int data);
+
+    [DllImport(Dll, EntryPoint = "mpv_set_property")]
+    public static extern int SetPropertyFlag(IntPtr ctx,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int format, ref int data);
+
+    /// <summary>读取 double 属性；失败返回 fallback。</summary>
+    public static double GetPropertyDouble(IntPtr ctx, string name, double fallback = 0)
+        => GetProperty(ctx, name, MpvFormat.Double, out double v) < 0 ? fallback : v;
+
     [DllImport(Dll, EntryPoint = "mpv_observe_property")]
     public static extern int ObserveProperty(IntPtr ctx, ulong replyUserData,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int format);

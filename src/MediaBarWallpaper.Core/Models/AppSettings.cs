@@ -12,9 +12,12 @@ public enum AnimationStyle { Aurora, Particles }
 /// <summary>频谱可视化样式。</summary>
 public enum SpectrumStyle { Bars, Ring, Wave }
 
+/// <summary>全屏沉浸式歌词动画样式（Folia 风格自研复刻）。</summary>
+public enum LyricsAnimationStyle { Flow, Name, Chorus }
+
 /// <summary>
 /// 应用设置（JSON 持久化）。全部可自定义项集中于此，
-/// 界面修改即保存；启动时由 <see cref="Services.SettingsService"/> 加载。
+/// 界面修改即保存；启动时由 <see cref="MediaBarWallpaper.Services.SettingsService"/> 加载。
 /// </summary>
 public sealed class AppSettings
 {
@@ -46,6 +49,27 @@ public sealed class AppSettings
     public double LyricsFontSize { get; set; } = 22.0;            // 14 .. 34
     public double LyricsOpacity { get; set; } = 1.0;              // 0.3 .. 1.0
     public bool LyricsKaraoke { get; set; } = true;               // 逐字（音节级）高亮
+
+    // ---- Folia 类功能（v0.5）----
+    /// <summary>全屏沉浸式歌词动画开关。</summary>
+    public bool FullscreenLyricsEnabled { get; set; }
+    /// <summary>全屏歌词动画样式（流光/浮名/群唱）。</summary>
+    public LyricsAnimationStyle LyricsAnimationStyle { get; set; } = LyricsAnimationStyle.Flow;
+    /// <summary>全屏歌词背景遮罩不透明度（0.4 .. 1.0）。</summary>
+    public double FullscreenLyricsOpacity { get; set; } = 0.92;
+    /// <summary>本地曲库根目录（扫描 mp3/flac/wav/m4a/ogg/aac）。</summary>
+    public string MusicLibraryFolder { get; set; } = "";
+    /// <summary>均衡器总开关。</summary>
+    public bool EqualizerEnabled { get; set; }
+    /// <summary>10 段均衡器增益（dB，-12 .. +12，31Hz..16kHz）。</summary>
+    public double[] EqualizerGains { get; set; } = new double[10];
+    /// <summary>封面动态配色主题（扩展 CoverPalette 主色为渐变主题）。</summary>
+    public bool DynamicThemeEnabled { get; set; } = true;
+    /// <summary>Navidrome 服务器地址（Subsonic API）。</summary>
+    public string NavidromeServer { get; set; } = "";
+    public string NavidromeUser { get; set; } = "";
+    /// <summary>Navidrome 密码：仅明文保存在本机 settings.json（不加密，README 已说明）。</summary>
+    public string NavidromePassword { get; set; } = "";
 
     // ---- 通用 ----
     public string AccentColor { get; set; } = "#818CF8";          // 主题强调色

@@ -376,6 +376,8 @@ public sealed class WallpaperEngine : IDisposable
         bmp.BeginInit();
         bmp.CacheOption = BitmapCacheOption.OnLoad;
         bmp.UriSource = new Uri(path);
+        // B9：按屏幕宽度上限解码，避免超大壁纸/轮播图全尺寸解码驻留内存
+        bmp.DecodePixelWidth = (int)Math.Min(SystemParameters.VirtualScreenWidth, 2560);
         bmp.EndInit();
         bmp.Freeze();
         return bmp;

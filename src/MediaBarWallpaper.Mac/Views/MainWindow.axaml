@@ -1,0 +1,169 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MediaBarWallpaper.Mac.Views.MainWindow"
+        Width="980" Height="720"
+        MinWidth="820" MinHeight="600"
+        Title="MediaBarWallpaper · macOS"
+        ExtendClientAreaToDecorationsHint="False">
+
+  <TabControl x:Name="RootTabs" Margin="12">
+
+    <!-- ============ 播放 ============ -->
+    <TabItem Header="播放">
+      <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="220,*">
+        <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="3"
+                Background="#222430" CornerRadius="10" Margin="0,0,12,0"
+                Width="220" Height="220" VerticalAlignment="Top">
+          <Image x:Name="CoverImage" Stretch="UniformToFill"/>
+        </Border>
+
+        <StackPanel Grid.Row="0" Grid.Column="1" Spacing="4" VerticalAlignment="Top">
+          <TextBlock x:Name="NowPlayingTitle" FontSize="22" FontWeight="SemiBold" Text="未在播放"/>
+          <TextBlock x:Name="NowPlayingArtist" FontSize="14" Opacity="0.7" Text="—"/>
+          <TextBlock x:Name="MpvStatus" FontSize="12" Opacity="0.55" Text=""/>
+        </StackPanel>
+
+        <!-- 队列 -->
+        <ListBox x:Name="QueueList" Grid.Row="1" Grid.Column="1" Margin="0,10,0,10"
+                  SelectionChanged="QueueList_SelectionChanged"/>
+
+        <!-- 控制条 -->
+        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Bottom">
+          <Button x:Name="PrevBtn" Content="⏮ 上一首" Click="Prev_Click"/>
+          <Button x:Name="PlayBtn" Content="▶ 播放" Click="Play_Click" MinWidth="90"/>
+          <Button x:Name="NextBtn" Content="下一首 ⏭" Click="Next_Click"/>
+          <Button x:Name="RepeatBtn" Content="循环: 关" Click="Repeat_Click" Margin="10,0,0,0"/>
+        </StackPanel>
+
+        <!-- 进度条放第二行下方，横跨 -->
+        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Vertical" Spacing="2" Margin="0,52,0,0">
+          <Slider x:Name="ProgressSlider" Minimum="0" Maximum="1000" Value="0"
+                  PointerPressed="Progress_PointerPressed" PointerReleased="Progress_PointerReleased"
+                  ValueChanged="Progress_ValueChanged"/>
+          <TextBlock x:Name="TimeLabel" FontSize="12" Opacity="0.7" Text="0:00 / 0:00"/>
+        </StackPanel>
+      </Grid>
+    </TabItem>
+
+    <!-- ============ 曲库 ============ -->
+    <TabItem Header="曲库">
+      <Grid RowDefinitions="Auto,Auto,*">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+          <TextBlock Text="音乐目录:" VerticalAlignment="Center"/>
+          <TextBox x:Name="LibraryFolderBox" Width="420" IsReadOnly="True"
+                   Watermark="选择本地音乐文件夹"/>
+          <Button Content="选择目录…" Click="PickLibrary_Click"/>
+          <Button Content="扫描" Click="ScanLibrary_Click"/>
+        </StackPanel>
+        <TextBlock Grid.Row="1" x:Name="LibrarySummary" Opacity="0.7" Margin="0,0,0,6"/>
+        <ListBox x:Name="LibraryList" Grid.Row="2" DoubleTapped="LibraryList_DoubleTapped"/>
+      </Grid>
+    </TabItem>
+
+    <!-- ============ 在线音源 ============ -->
+    <TabItem Header="在线音源">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+        <Border Grid.Row="0" Background="#3a2a1a" CornerRadius="6" Padding="10,6" Margin="0,0,0,8">
+          <TextBlock x:Name="RiskLabel" Foreground="#ffd28a" TextWrapping="Wrap"
+                     Text="第三方非官方接口，仅供学习交流，稳定性与版权不保证，随时可能失效。"/>
+        </Border>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+          <TextBox x:Name="NeteaseSearchBox" Width="360" Watermark="搜索网易云歌曲…"
+                   KeyDown="NeteaseSearch_KeyDown"/>
+          <Button Content="搜索" Click="NeteaseSearch_Click"/>
+        </StackPanel>
+
+        <Expander Grid.Row="2" Header="Navidrome（自建服务器）" IsExpanded="True" Margin="0,0,0,8">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="服务器" VerticalAlignment="Center" Width="50"/>
+              <TextBox x:Name="NavServerBox" Width="280" Watermark="https://your.host"/>
+              <TextBlock Text="用户名" VerticalAlignment="Center" Width="50"/>
+              <TextBox x:Name="NavUserBox" Width="140"/>
+              <TextBlock Text="密码" VerticalAlignment="Center" Width="50"/>
+              <TextBox x:Name="NavPassBox" Width="140" Watermark="密码"/>
+              <Button Content="测试连接" Click="NavTest_Click"/>
+              <Button Content="保存并加载专辑" Click="NavLoad_Click"/>
+            </StackPanel>
+            <TextBlock x:Name="NavStatus" Opacity="0.7"/>
+          </StackPanel>
+        </Expander>
+
+        <ListBox Grid.Row="3" x:Name="OnlineList" Height="120" Margin="0,0,0,8"
+                 DoubleTapped="OnlineList_DoubleTapped"/>
+        <ListBox Grid.Row="4" x:Name="NavList" DoubleTapped="NavList_DoubleTapped"/>
+      </Grid>
+    </TabItem>
+
+    <!-- ============ 均衡器 ============ -->
+    <TabItem Header="均衡器">
+      <StackPanel Spacing="10" Margin="4">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <ToggleSwitch x:Name="EqEnabledSwitch" Content="启用均衡器" Click="EqEnabled_Toggled"/>
+          <Button Content="复位（平直）" Click="EqReset_Click"/>
+          <TextBlock x:Name="EqValueLabel" Opacity="0.7" VerticalAlignment="Center"/>
+        </StackPanel>
+        <TextBlock Text="10 段图形均衡器（31Hz – 16kHz），增益范围 ±12 dB" Opacity="0.7"/>
+        <!-- 10 个 Slider 在代码后置中动态生成到 EqPanel -->
+        <StackPanel x:Name="EqPanel" Orientation="Horizontal" Spacing="10"/>
+      </StackPanel>
+    </TabItem>
+
+    <!-- ============ 设置 ============ -->
+    <TabItem Header="设置">
+      <ScrollViewer>
+        <StackPanel Spacing="12" Margin="6">
+          <Border Background="#222430" CornerRadius="8" Padding="12">
+            <StackPanel Spacing="8">
+              <TextBlock FontSize="15" FontWeight="SemiBold" Text="桌面歌词（置顶半透明）"/>
+              <ToggleSwitch x:Name="LyricsEnabledSwitch" Content="启用桌面歌词" Click="LyricsEnabled_Toggled"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="透明度" VerticalAlignment="Center" Width="60"/>
+                <Slider x:Name="LyricsOpacitySlider" Minimum="0.3" Maximum="1" Width="240"
+                        ValueChanged="LyricsOpacity_ValueChanged"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Background="#222430" CornerRadius="8" Padding="12">
+            <StackPanel Spacing="8">
+              <TextBlock FontSize="15" FontWeight="SemiBold" Text="全屏歌词动画（Folia 风格）"/>
+              <ToggleSwitch x:Name="FsLyricsEnabledSwitch" Content="启用全屏歌词" Click="FsLyricsEnabled_Toggled"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="样式" VerticalAlignment="Center" Width="60"/>
+                <ComboBox x:Name="FsStyleBox" Width="160" SelectionChanged="FsStyle_SelectionChanged">
+                  <ComboBoxItem Content="流光 Flow"/>
+                  <ComboBoxItem Content="浮名 Name"/>
+                  <ComboBoxItem Content="群唱 Chorus"/>
+                </ComboBox>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="背景遮罩" VerticalAlignment="Center" Width="60"/>
+                <Slider x:Name="FsOpacitySlider" Minimum="0.4" Maximum="1" Width="240"
+                        ValueChanged="FsOpacity_ValueChanged"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Background="#222430" CornerRadius="8" Padding="12">
+            <StackPanel Spacing="8">
+              <TextBlock FontSize="15" FontWeight="SemiBold" Text="外观"/>
+              <ToggleSwitch x:Name="DynamicThemeSwitch" Content="封面动态配色" Click="DynamicTheme_Toggled"/>
+            </StackPanel>
+          </Border>
+
+          <Border Background="#222430" CornerRadius="8" Padding="12">
+            <StackPanel Spacing="4">
+              <TextBlock FontSize="15" FontWeight="SemiBold" Text="运行环境"/>
+              <TextBlock x:Name="EnvStatusLabel" TextWrapping="Wrap" Opacity="0.8"/>
+              <TextBlock Opacity="0.55" FontSize="12"
+                         Text="v0.5 macOS 版不支持桌面壁纸（受 macOS 限制，见 README）。"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+
+  </TabControl>
+</Window>
