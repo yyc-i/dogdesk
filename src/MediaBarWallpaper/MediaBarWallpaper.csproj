@@ -19,8 +19,8 @@
     <MpvWindowsArm64Enabled>false</MpvWindowsArm64Enabled>
     <!-- WPF 以 manifest 声明 PerMonitorV2 是正确做法，抑制 WinForms 对此的 WFAC010 警告 -->
     <NoWarn>WFAC010</NoWarn>
-    <Version>0.3.0</Version>
-    <Description>任务栏媒体控制条 + 动态壁纸（libmpv 全格式渲染 + SMTC + 频谱律动 + 歌词）</Description>
+    <Version>0.4.0</Version>
+    <Description>任务栏媒体控制条 + 动态壁纸（libmpv 全格式渲染 + SMTC + 频谱律动 + 歌词 + 多显示器）</Description>
   </PropertyGroup>
 
   <ItemGroup>

@@ -23,6 +23,12 @@ public sealed class AudioSpectrumService : IDisposable
     private readonly float[] _latest = new float[BandCount];
     private DateTime _lastFft = DateTime.MinValue;
 
+    /// <summary>灵敏度（能量放大系数，1 = 默认）。</summary>
+    public double Sensitivity { get; set; } = 1.0;
+
+    /// <summary>下降平滑系数（0.4 快速回落 .. 0.95 缓慢回落），上升始终即时。</summary>
+    public double Smoothing { get; set; } = 0.72;
+
     public event Action<float[]>? SpectrumReady;
 
     public bool IsRunning => _capture is not null;
@@ -121,10 +127,12 @@ public sealed class AudioSpectrumService : IDisposable
             for (int i = i0; i < i1; i++)
                 sum += Math.Sqrt(buffer[i].X * buffer[i].X + buffer[i].Y * buffer[i].Y);
 
-            bands[b] = (float)Math.Clamp(sum / (i1 - i0) / MaxMagnitude, 0, 1);
+            bands[b] = (float)Math.Clamp(
+                sum / (i1 - i0) / MaxMagnitude * Sensitivity, 0, 1);
         }
 
-        // 平滑：上升即时，下降放缓，避免柱条抖动
+        // 平滑：上升即时，下降按 Smoothing 系数放缓，避免柱条抖动
+        float decay = (float)Math.Clamp(Smoothing, 0.4, 0.95);
         lock (_lock)
         {
             for (int b = 0; b < BandCount; b++)

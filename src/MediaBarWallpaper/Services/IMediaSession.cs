@@ -30,4 +30,7 @@ public interface IMediaSession : INotifyPropertyChanged
     void TogglePlayPause();
     void Next();
     void Previous();
+
+    /// <summary>跳转到曲目进度（0..1）。</summary>
+    void Seek(double fraction);
 }

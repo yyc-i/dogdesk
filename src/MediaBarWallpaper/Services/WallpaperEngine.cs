@@ -6,38 +6,58 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using MediaBarWallpaper.Interop;
+using MediaBarWallpaper.Models;
 using MediaBarWallpaper.Services.Mpv;
 using MediaBarWallpaper.Views;
 using Path = System.IO.Path;
 
 namespace MediaBarWallpaper.Services;
 
-public enum WallpaperKind { Animated, Image, Video }
-
 /// <summary>
-/// 壁纸引擎：创建壁纸窗口并 SetParent 到 WorkerW，铺满整个虚拟桌面。
-/// 视频源优先使用 libmpv（全格式 + 硬解，独立 MpvWallpaperWindow）；
-/// libmpv 缺失时回退 WPF MediaElement。频谱律动：
-/// WPF 源同窗口叠加 SpectrumBarsControl；mpv 源因 airspace 用独立透明覆盖窗口。
+/// 壁纸引擎 v2：每个显示器一个独立壁纸实例（SetParent 到 WorkerW），
+/// 支持多显示器、cover/contain/stretch 填充、亮度调节、图片文件夹轮播、
+/// 多种内置动画；视频源优先 libmpv（全格式+硬解），缺失回退 MediaElement；
+/// 频谱律动：WPF 源同窗口叠加，mpv 源用独立透明覆盖窗口。
 /// </summary>
 public sealed class WallpaperEngine : IDisposable
 {
-    private Window? _window;
-    private Window? _overlayWindow;
-    private SpectrumBarsControl? _inlineBars;
-    private IntPtr _workerW;
-    private AudioSpectrumService? _spectrum;
+    private const long WS_EX_TRANSPARENT = 0x00000020;
 
-    private const long WS_EX_TRANSPARENT = 0x00000020; // 鼠标穿透（分层覆盖窗口）
+    private sealed class WallpaperInstance
+    {
+        public Window? Win;                      // 壁纸窗口
+        public Window? Overlay;                  // mpv 频谱覆盖窗口
+        public SpectrumBarsControl? InlineBars;  // WPF 源同窗口频谱
+        public Image? ImageHost;                 // 图片内容（轮播更新）
+        public MediaElement? FallbackVideo;      // 回退视频
+        public Rect Bounds;                      // 屏幕矩形（物理像素）
+    }
+
+    private readonly List<WallpaperInstance> _instances = new();
+    private AppSettings? _settings;
+    private AudioSpectrumService? _spectrum;
+    private IntPtr _workerW;
+    private DispatcherTimer? _slideshowTimer;
+    private string[] _slideFiles = Array.Empty<string>();
+    private int _slideIndex;
 
     public event Action<string>? Log;
-    public bool IsRunning => _window is not null;
+    public bool IsRunning => _instances.Count > 0;
 
-    public bool Start(WallpaperKind kind, string? filePath = null, AudioSpectrumService? spectrum = null)
+    /// <summary>按当前设置启动壁纸（每显示器一个实例）。</summary>
+    public bool Start(AppSettings s, AudioSpectrumService? spectrum)
     {
         Stop();
+        _settings = s;
         _spectrum = spectrum;
+
+        if (spectrum is not null)
+        {
+            spectrum.Sensitivity = s.SpectrumSensitivity;
+            spectrum.Smoothing = s.SpectrumSmoothing;
+        }
 
         _workerW = WallpaperHost.FindOrCreateWorkerW();
         if (_workerW == IntPtr.Zero)
@@ -46,52 +66,64 @@ public sealed class WallpaperEngine : IDisposable
             return false;
         }
 
-        if (kind == WallpaperKind.Video)
+        List<Rect> screens = GetScreens();
+        if (screens.Count == 0)
         {
-            if (MpvNativeLoader.IsLoaded)
-                StartMpvVideo(filePath, spectrum);
-            else
-            {
-                Log?.Invoke("[壁纸] libmpv 未加载，视频回退 WPF MediaElement（建议 mp4/wmv，格式支持有限）");
-                StartWpfWindow(BuildVideoContent(filePath), spectrum, "WPF 视频壁纸（MediaElement 回退）");
-            }
-        }
-        else
-        {
-            UIElement content = kind == WallpaperKind.Image
-                ? BuildImageContent(filePath)
-                : BuildAnimatedContent();
-            StartWpfWindow(content, spectrum, kind == WallpaperKind.Image ? "图片壁纸" : "内置动画壁纸");
+            Log?.Invoke("[壁纸] 未枚举到显示器");
+            return false;
         }
 
+        foreach (Rect bounds in screens)
+            CreateInstance(bounds);
+
+        StartSlideshowIfNeeded();
+
+        Log?.Invoke($"[壁纸] 已启动 {_instances.Count} 个显示器实例（{DescribeSource()}）");
         return true;
     }
 
-    // ---- mpv 视频壁纸 ----
+    // ---- 实例创建 ----
 
-    private void StartMpvVideo(string? filePath, AudioSpectrumService? spectrum)
+    private void CreateInstance(Rect bounds)
     {
-        TryResolveFile(filePath, out string full);
+        var inst = new WallpaperInstance { Bounds = bounds };
 
-        var win = new MpvWallpaperWindow();
-        _window = win;
-        ShowAndInject(win, NativeMethods.HWND_BOTTOM);
-        win.StartPlayback(full, Log);
+        if (_settings!.WallpaperKind == WallpaperKind.Video && MpvNativeLoader.IsLoaded)
+            inst.Win = BuildMpvWindow(inst);
+        else
+            inst.Win = BuildWpfWindow(inst);
 
-        if (spectrum is not null)
+        ShowAndInject(inst);
+
+        if (_spectrum is not null)
         {
-            var overlay = new SpectrumOverlayWindow();
-            _overlayWindow = overlay;
-            ShowTransparentOverlay(overlay);
-            overlay.Start(spectrum);
+            if (inst.Win is MpvWallpaperWindow)
+            {
+                var overlay = new SpectrumOverlayWindow();
+                inst.Overlay = overlay;
+                ShowTransparentOverlay(overlay, bounds);
+                overlay.Start(_spectrum, bounds.Height * 0.16, _settings.SpectrumStyle);
+            }
+            else if (inst.InlineBars is not null)
+            {
+                inst.InlineBars.SpectrumStyle = _settings.SpectrumStyle;
+                inst.InlineBars.Start(_spectrum);
+            }
         }
-
-        Log?.Invoke($"[壁纸] libmpv 视频壁纸已启动，硬解+全格式，频谱律动={(spectrum is not null ? "开" : "关")}");
     }
 
-    // ---- WPF 内容壁纸（动画 / 图片 / 回退视频）----
+    private Window BuildMpvWindow(WallpaperInstance inst)
+    {
+        var win = new MpvWallpaperWindow();
+        _instances.Add(inst);
+        if (TryResolveFile(_settings!.WallpaperPath, out string full))
+            win.StartPlayback(full, Log, _settings.StretchMode);
+        else
+            Log?.Invoke("[壁纸] 视频文件不存在，mpv 已创建但未加载内容");
+        return win;
+    }
 
-    private void StartWpfWindow(UIElement content, AudioSpectrumService? spectrum, string label)
+    private Window BuildWpfWindow(WallpaperInstance inst)
     {
         var win = new Window
         {
@@ -104,102 +136,91 @@ public sealed class WallpaperEngine : IDisposable
         };
 
         var root = new Grid();
-        root.Children.Add(content);
+        root.Children.Add(BuildWpfContent(inst));
 
-        if (spectrum is not null)
+        // 亮度遮罩（1=不遮，0.3=很暗）
+        var dimmer = new Border
+        {
+            Background = new SolidColorBrush(Colors.Black),
+            Opacity = 1.0 - Math.Clamp(_settings!.Brightness, 0.3, 1.0),
+            IsHitTestVisible = false,
+        };
+        root.Children.Add(dimmer);
+
+        if (_spectrum is not null)
         {
             var bars = new SpectrumBarsControl
             {
                 VerticalAlignment = VerticalAlignment.Bottom,
-                BarHeight = 110,
+                BarHeight = inst.Bounds.Height * 0.16,
             };
-            _inlineBars = bars;
+            inst.InlineBars = bars;
             root.Children.Add(bars);
         }
 
         win.Content = root;
-        _window = win;
-        ShowAndInject(win, NativeMethods.HWND_BOTTOM);
-
-        // Show 之后 ActualWidth 就绪，再启动频谱
-        if (spectrum is not null && _inlineBars is not null)
-            _inlineBars.Start(spectrum);
-
-        GetVirtualScreen(out int vx, out int vy, out int vw, out int vh);
-        Log?.Invoke($"[壁纸] {label} 已注入 WorkerW(0x{_workerW.ToInt64():X})，{vw}x{vh} @ ({vx},{vy})，频谱律动={(spectrum is not null ? "开" : "关")}");
+        return win;
     }
 
-    // ---- 窗口注入与定位 ----
-
-    private IntPtr ShowAndInject(Window win, IntPtr insertAfter)
+    private UIElement BuildWpfContent(WallpaperInstance inst)
     {
-        win.Show();
-        IntPtr hwnd = new WindowInteropHelper(win).EnsureHandle();
-
-        long ex = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE).ToInt64();
-        NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE,
-            new IntPtr(ex | NativeMethods.WS_EX_NOACTIVATE | NativeMethods.WS_EX_TOOLWINDOW));
-
-        NativeMethods.SetParent(hwnd, _workerW);
-
-        GetVirtualScreen(out int vx, out int vy, out int vw, out int vh);
-        NativeMethods.SetWindowPos(hwnd, insertAfter, vx, vy, vw, vh,
-            NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
-        return hwnd;
-    }
-
-    private void ShowTransparentOverlay(Window overlay)
-    {
-        overlay.Show();
-        IntPtr hwnd = new WindowInteropHelper(overlay).EnsureHandle();
-
-        long ex = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE).ToInt64();
-        NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE,
-            new IntPtr(ex | NativeMethods.WS_EX_NOACTIVATE | NativeMethods.WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT));
-
-        NativeMethods.SetParent(hwnd, _workerW);
-
-        GetVirtualScreen(out int vx, out int vy, out int vw, out int vh);
-        // IntPtr.Zero = HWND_TOP：放到 WorkerW 子窗口 z 序顶部（非全局置顶），盖在视频窗口上
-        NativeMethods.SetWindowPos(hwnd, IntPtr.Zero, vx, vy, vw, vh,
-            NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
-    }
-
-    public void Stop()
-    {
-        CloseInjected(_overlayWindow);
-        _overlayWindow = null;
-
-        _inlineBars?.Stop();
-        _inlineBars = null;
-
-        CloseInjected(_window);
-        _window = null;
-        _spectrum = null;
-
-        if (_workerW != IntPtr.Zero)
-            Log?.Invoke("[壁纸] 已停止");
-    }
-
-    private void CloseInjected(Window? win)
-    {
-        if (win is null) return;
-
-        IntPtr hwnd = new WindowInteropHelper(win).Handle;
-        if (hwnd != IntPtr.Zero)
+        return _settings!.WallpaperKind switch
         {
-            NativeMethods.SetParent(hwnd, IntPtr.Zero);
-            NativeMethods.SetWindowPos(hwnd, NativeMethods.HWND_NOTOPMOST, 0, 0, 0, 0,
-                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
-        }
-        win.Close();
+            WallpaperKind.Image => BuildImageContent(inst),
+            WallpaperKind.Video => BuildFallbackVideoContent(inst),
+            _ => _settings.AnimationStyle == AnimationStyle.Particles
+                ? BuildParticlesContent(inst)
+                : BuildAuroraContent(inst),
+        };
     }
 
-    public void Dispose() => Stop();
+    private UIElement BuildImageContent(WallpaperInstance inst)
+    {
+        var img = new Image
+        {
+            Stretch = MapStretch(_settings!.StretchMode),
+        };
+        inst.ImageHost = img;
+        if (TryResolveFile(_settings.WallpaperPath, out string full))
+            img.Source = LoadImage(full);
+        else if (Directory.Exists(_settings.WallpaperFolder))
+        {
+            string[] files = CollectImages(_settings.WallpaperFolder);
+            if (files.Length > 0) img.Source = LoadImage(files[0]);
+        }
+        return img;
+    }
 
-    // ---- 内容构建 ----
+    private UIElement BuildFallbackVideoContent(WallpaperInstance inst)
+    {
+        var media = new MediaElement
+        {
+            Stretch = MapStretch(_settings!.StretchMode),
+            LoadedBehavior = MediaState.Play,
+            UnloadedBehavior = MediaState.Stop,
+            IsMuted = true,
+        };
+        inst.FallbackVideo = media;
+        if (TryResolveFile(_settings.WallpaperPath, out string full))
+            media.Source = new Uri(full);
+        media.MediaEnded += (_, _) =>
+        {
+            media.Position = TimeSpan.Zero;
+            media.Play();
+        };
+        return media;
+    }
 
-    private static UIElement BuildAnimatedContent()
+    private UIElement BuildParticlesContent(WallpaperInstance inst)
+    {
+        var host = new Grid { Background = BuildSpaceGradient() };
+        var ctrl = new ParticleFieldControl();
+        host.Children.Add(ctrl);
+        ctrl.Start();
+        return host;
+    }
+
+    private UIElement BuildAuroraContent(WallpaperInstance inst)
     {
         var gradient = new LinearGradientBrush
         {
@@ -233,7 +254,7 @@ public sealed class WallpaperEngine : IDisposable
 
         var txt = new TextBlock
         {
-            Text = "动态壁纸\n任务栏媒体条 + Wallpaper（libmpv / SMTC / 频谱 / 歌词）",
+            Text = "动态壁纸\n任务栏媒体条 + 壁纸（libmpv / SMTC / 频谱 / 歌词）",
             Foreground = new SolidColorBrush(Color.FromArgb(150, 255, 255, 255)),
             FontSize = 15,
             FontWeight = FontWeights.SemiBold,
@@ -247,33 +268,190 @@ public sealed class WallpaperEngine : IDisposable
         return grid;
     }
 
-    private static UIElement BuildImageContent(string? path)
+    private static LinearGradientBrush BuildSpaceGradient()
     {
-        var img = new Image { Stretch = Stretch.UniformToFill };
-        if (TryResolveFile(path, out string full))
-            img.Source = new BitmapImage(new Uri(full));
-        return img;
+        var g = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 1),
+        };
+        g.GradientStops.Add(new GradientStop(Color.FromRgb(0x0B, 0x0F, 0x2A), 0.00));
+        g.GradientStops.Add(new GradientStop(Color.FromRgb(0x16, 0x14, 0x3E), 0.55));
+        g.GradientStops.Add(new GradientStop(Color.FromRgb(0x24, 0x1B, 0x52), 1.00));
+        return g;
     }
 
-    private static UIElement BuildVideoContent(string? path)
+    // ---- 窗口注入 ----
+
+    private void ShowAndInject(WallpaperInstance inst)
     {
-        var media = new MediaElement
-        {
-            Stretch = Stretch.UniformToFill,
-            LoadedBehavior = MediaState.Play,
-            UnloadedBehavior = MediaState.Stop,
-            IsMuted = true,
-        };
+        Window win = inst.Win!;
+        win.Show();
+        IntPtr hwnd = new WindowInteropHelper(win).EnsureHandle();
 
-        if (TryResolveFile(path, out string full))
-            media.Source = new Uri(full);
+        long ex = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE).ToInt64();
+        NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE,
+            new IntPtr(ex | NativeMethods.WS_EX_NOACTIVATE | NativeMethods.WS_EX_TOOLWINDOW));
 
-        media.MediaEnded += (_, _) =>
+        NativeMethods.SetParent(hwnd, _workerW);
+
+        Rect b = inst.Bounds;
+        NativeMethods.SetWindowPos(hwnd, NativeMethods.HWND_BOTTOM,
+            (int)b.X, (int)b.Y, (int)b.Width, (int)b.Height,
+            NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
+    }
+
+    private void ShowTransparentOverlay(Window overlay, Rect bounds)
+    {
+        overlay.Show();
+        IntPtr hwnd = new WindowInteropHelper(overlay).EnsureHandle();
+
+        long ex = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE).ToInt64();
+        NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE,
+            new IntPtr(ex | NativeMethods.WS_EX_NOACTIVATE | NativeMethods.WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT));
+
+        NativeMethods.SetParent(hwnd, _workerW);
+
+        NativeMethods.SetWindowPos(hwnd, IntPtr.Zero,
+            (int)bounds.X, (int)bounds.Y, (int)bounds.Width, (int)bounds.Height,
+            NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
+    }
+
+    // ---- 图片文件夹轮播 ----
+
+    private void StartSlideshowIfNeeded()
+    {
+        StopSlideshow();
+
+        if (_settings!.WallpaperKind != WallpaperKind.Image || !_settings.SlideshowEnabled)
+            return;
+
+        string folder = _settings.WallpaperFolder;
+        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return;
+
+        _slideFiles = CollectImages(folder);
+        if (_slideFiles.Length == 0) return;
+        _slideIndex = 0;
+
+        _slideshowTimer = new DispatcherTimer
         {
-            media.Position = TimeSpan.Zero;
-            media.Play();
+            Interval = TimeSpan.FromSeconds(Math.Clamp(_settings.SlideshowIntervalSec, 3, 600))
         };
-        return media;
+        _slideshowTimer.Tick += (_, _) => AdvanceSlide();
+        _slideshowTimer.Start();
+        Log?.Invoke($"[壁纸] 图片轮播已启动：{_slideFiles.Length} 张，每 {_settings.SlideshowIntervalSec:0}s 切换");
+    }
+
+    private void AdvanceSlide()
+    {
+        if (_slideFiles.Length == 0) return;
+        _slideIndex = (_slideIndex + 1) % _slideFiles.Length;
+        string file = _slideFiles[_slideIndex];
+        foreach (var inst in _instances)
+            if (inst.ImageHost is not null)
+                inst.ImageHost.Source = LoadImage(file);
+    }
+
+    private void StopSlideshow()
+    {
+        if (_slideshowTimer is null) return;
+        _slideshowTimer.Stop();
+        _slideshowTimer = null;
+        _slideFiles = Array.Empty<string>();
+    }
+
+    private static string[] CollectImages(string folder) =>
+        Directory.GetFiles(folder, "*.*", SearchOption.TopDirectoryOnly)
+            .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
+                || f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)
+                || f.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+                || f.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase)
+                || f.EndsWith(".webp", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    private static BitmapImage LoadImage(string path)
+    {
+        var bmp = new BitmapImage();
+        bmp.BeginInit();
+        bmp.CacheOption = BitmapCacheOption.OnLoad;
+        bmp.UriSource = new Uri(path);
+        bmp.EndInit();
+        bmp.Freeze();
+        return bmp;
+    }
+
+    private static Stretch MapStretch(StretchMode mode) => mode switch
+    {
+        StretchMode.Contain => Stretch.Uniform,
+        StretchMode.Stretch => Stretch.Fill,
+        _ => Stretch.UniformToFill,
+    };
+
+    // ---- 停止 / 释放 ----
+
+    public void Stop()
+    {
+        StopSlideshow();
+
+        foreach (var inst in _instances)
+        {
+            inst.InlineBars?.Stop();
+            if (inst.Overlay is not null)
+                CloseInjected(inst.Overlay);
+            if (inst.Win is not null)
+                CloseInjected(inst.Win);
+        }
+        _instances.Clear();
+        _spectrum = null;
+
+        if (_workerW != IntPtr.Zero)
+            Log?.Invoke("[壁纸] 已停止");
+    }
+
+    private void CloseInjected(Window win)
+    {
+        IntPtr hwnd = new WindowInteropHelper(win).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            NativeMethods.SetParent(hwnd, IntPtr.Zero);
+            NativeMethods.SetWindowPos(hwnd, NativeMethods.HWND_NOTOPMOST, 0, 0, 0, 0,
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+        }
+        win.Close();
+    }
+
+    public void Dispose() => Stop();
+
+    // ---- 工具 ----
+
+    private string DescribeSource() => _settings!.WallpaperKind switch
+    {
+        WallpaperKind.Video => "libmpv 视频（全格式+硬解）",
+        WallpaperKind.Image => _settings.SlideshowEnabled ? "图片文件夹轮播" : "图片",
+        _ => _settings.AnimationStyle == AnimationStyle.Particles ? "粒子星空动画" : "极光动画",
+    };
+
+    private static List<Rect> GetScreens()
+    {
+        var list = new List<Rect>();
+        try
+        {
+            foreach (System.Windows.Forms.Screen screen in System.Windows.Forms.Screen.AllScreens)
+            {
+                var b = screen.Bounds;
+                list.Add(new Rect(b.X, b.Y, b.Width, b.Height));
+            }
+        }
+        catch
+        {
+            list.Add(new Rect(
+                SystemParameters.VirtualScreenLeft,
+                SystemParameters.VirtualScreenTop,
+                SystemParameters.VirtualScreenWidth,
+                SystemParameters.VirtualScreenHeight));
+        }
+        return list;
     }
 
     private static bool TryResolveFile(string? path, out string full)
@@ -284,13 +462,5 @@ public sealed class WallpaperEngine : IDisposable
         if (!File.Exists(candidate)) return false;
         full = candidate;
         return true;
-    }
-
-    private static void GetVirtualScreen(out int x, out int y, out int w, out int h)
-    {
-        x = (int)SystemParameters.VirtualScreenLeft;
-        y = (int)SystemParameters.VirtualScreenTop;
-        w = (int)SystemParameters.VirtualScreenWidth;
-        h = (int)SystemParameters.VirtualScreenHeight;
     }
 }

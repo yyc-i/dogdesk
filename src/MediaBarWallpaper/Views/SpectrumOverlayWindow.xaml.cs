@@ -1,4 +1,5 @@
 using System.Windows;
+using MediaBarWallpaper.Models;
 using MediaBarWallpaper.Services;
 
 namespace MediaBarWallpaper.Views;
@@ -15,9 +16,11 @@ public partial class SpectrumOverlayWindow : Window
         InitializeComponent();
     }
 
-    public void Start(AudioSpectrumService spectrum, double barHeight = 110)
+    public void Start(AudioSpectrumService spectrum, double barHeight = 110,
+        SpectrumStyle style = SpectrumStyle.Bars)
     {
         Bars.BarHeight = barHeight;
+        Bars.SpectrumStyle = style;
         Bars.Start(spectrum);
     }
 

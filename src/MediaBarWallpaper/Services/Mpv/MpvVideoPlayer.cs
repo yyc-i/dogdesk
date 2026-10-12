@@ -1,5 +1,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
+using MediaBarWallpaper.Models;
 
 namespace MediaBarWallpaper.Services.Mpv;
 
@@ -13,6 +14,7 @@ internal sealed class MpvVideoPlayer : IDisposable
     private Thread? _eventThread;
     private volatile bool _running;
     private readonly IntPtr _wid;
+    private readonly StretchMode _stretch;
     private ulong _observeSeq;
 
     public double Duration { get; private set; }
@@ -22,7 +24,11 @@ internal sealed class MpvVideoPlayer : IDisposable
     public event Action<string>? Log;
     public event Action? FileEnded;
 
-    public MpvVideoPlayer(IntPtr wid) => _wid = wid;
+    public MpvVideoPlayer(IntPtr wid, StretchMode stretch = StretchMode.Cover)
+    {
+        _wid = wid;
+        _stretch = stretch;
+    }
 
     public void Initialize()
     {
@@ -41,8 +47,7 @@ internal sealed class MpvVideoPlayer : IDisposable
         SetOpt("loop-file", "inf");          // 单文件循环
         SetOpt("keep-open", "yes");
         SetOpt("idle", "yes");
-        SetOpt("panscan", "1.0");            // 配合 keepaspect 实现 cover 裁剪填满
-        SetOpt("keepaspect", "yes");
+        ApplyStretchOptions();               // cover / contain / stretch 填充模式
         SetOpt("video-align-x", "0");
         SetOpt("video-align-y", "0");
         // —— 关闭交互/OSD/光标 ——
@@ -100,6 +105,26 @@ internal sealed class MpvVideoPlayer : IDisposable
         int err = MpvNative.SetOptionString(_ctx, name, value);
         if (err < 0)
             Log?.Invoke($"选项 {name}={value} 设置失败：{ErrorText(err)}");
+    }
+
+    /// <summary>按填充模式配置 panscan / keepaspect。</summary>
+    private void ApplyStretchOptions()
+    {
+        switch (_stretch)
+        {
+            case StretchMode.Contain:
+                SetOpt("panscan", "0");
+                SetOpt("keepaspect", "yes");
+                break;
+            case StretchMode.Stretch:
+                SetOpt("panscan", "0");
+                SetOpt("keepaspect", "no");  // 允许拉伸填满
+                break;
+            default: // Cover
+                SetOpt("panscan", "1.0");    // 配合 keepaspect 裁剪填满
+                SetOpt("keepaspect", "yes");
+                break;
+        }
     }
 
     private string ErrorText(int err)

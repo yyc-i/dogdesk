@@ -174,6 +174,23 @@ public sealed class SmtcMediaSession : IMediaSession
         try { await _session.TrySkipPreviousAsync(); } catch { }
     }
 
+    public async void Seek(double fraction)
+    {
+        if (_session is null)
+        {
+            _fallbackProgress = Math.Clamp(fraction, 0, 1) * 100.0;
+            Raise(nameof(Progress01));
+            return;
+        }
+        try
+        {
+            double total = DurationSec;
+            long ms = (long)(Math.Clamp(fraction, 0, 1) * total * 1000);
+            await _session.TryChangePlaybackPositionAsync(ms);
+        }
+        catch { }
+    }
+
     // ---- 会话挂接 ----
 
     private void Attach(GlobalSystemMediaTransportControlsSession? s)

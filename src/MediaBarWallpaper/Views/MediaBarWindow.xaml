@@ -9,10 +9,10 @@
         ShowActivated="False"
         ResizeMode="NoResize"
         Width="360"
-        Height="52"
+        Height="56"
         Focusable="False">
   <Border x:Name="RootBorder"
-          CornerRadius="10"
+          CornerRadius="12"
           Background="#E619212E"
           BorderBrush="#2EFFFFFF"
           BorderThickness="1">
@@ -24,7 +24,7 @@
       </Grid.ColumnDefinitions>
 
       <!-- 封面（SMTC 提供时显示图片，否则音符占位） -->
-      <Border Width="38" Height="38" Margin="10,0,10,0" CornerRadius="8" VerticalAlignment="Center" ClipToBounds="True">
+      <Border Width="38" Height="38" Margin="10,0,8,0" CornerRadius="9" VerticalAlignment="Center" ClipToBounds="True">
         <Grid>
           <Image x:Name="CoverImage" Stretch="UniformToFill" Visibility="Collapsed"/>
           <Border x:Name="CoverPlaceholder">
@@ -40,23 +40,29 @@
         </Grid>
       </Border>
 
-      <!-- 标题 + 进度条 -->
+      <!-- 标题 + 进度条 + 音量 -->
       <Grid Grid.Column="1" VerticalAlignment="Center">
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto"/>
           <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal">
-          <TextBlock x:Name="TitleText" Text="--" Foreground="#F1F5F9" FontSize="13"
-                     FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="150"/>
-          <TextBlock x:Name="ArtistText" Text="--" Foreground="#94A3B8" FontSize="11"
-                     Margin="8,0,0,0" TextTrimming="CharacterEllipsis" MaxWidth="90"/>
-        </StackPanel>
+        <Grid>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock x:Name="TitleText" Text="--" Foreground="#F1F5F9" FontSize="13"
+                       FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="170"/>
+            <TextBlock x:Name="ArtistText" Text="--" Foreground="#94A3B8" FontSize="11"
+                       Margin="8,0,0,0" TextTrimming="CharacterEllipsis" MaxWidth="90"/>
+          </StackPanel>
+          <TextBlock x:Name="VolumeText" Text="" Foreground="#B8C0CC" FontSize="10"
+                     HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+        </Grid>
 
-        <Border x:Name="TrackBorder" Grid.Row="1" Height="3" CornerRadius="1.5"
-                Background="#334155" Margin="0,5,10,0">
-          <Rectangle x:Name="ProgressFill" Height="3" RadiusX="1.5" RadiusY="1.5"
+        <!-- 可拖动进度条 -->
+        <Border x:Name="TrackBorder" Grid.Row="1" Height="6" CornerRadius="3"
+                Background="#33FFFFFF" Margin="0,5,10,0"
+                MouseLeftButtonDown="OnTrackMouseDown" MouseMove="OnTrackMouseMove" MouseLeftButtonUp="OnTrackMouseUp">
+          <Rectangle x:Name="ProgressFill" RadiusX="3" RadiusY="3"
                      Fill="#818CF8" HorizontalAlignment="Left" Width="0"/>
         </Border>
       </Grid>

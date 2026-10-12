@@ -1,4 +1,5 @@
 using System.Windows;
+using MediaBarWallpaper.Models;
 using MediaBarWallpaper.Services.Mpv;
 
 namespace MediaBarWallpaper.Views;
@@ -21,14 +22,15 @@ public partial class MpvWallpaperWindow : Window
     }
 
     /// <summary>窗口 Show 且 SetParent 之后调用：创建 mpv 并加载视频。</summary>
-    public void StartPlayback(string path, Action<string>? log = null)
+    public void StartPlayback(string path, Action<string>? log = null,
+        StretchMode stretch = StretchMode.Cover)
     {
         if (_player is not null) return;
 
         // 读取 Handle 会强制创建宿主窗口；此时 WindowsFormsHost 已加载
         IntPtr wid = VideoPanel.Handle;
 
-        _player = new MpvVideoPlayer(wid);
+        _player = new MpvVideoPlayer(wid, stretch);
         _player.Log += msg => log?.Invoke(msg);
         _player.Initialize();
         _player.LoadFile(path);

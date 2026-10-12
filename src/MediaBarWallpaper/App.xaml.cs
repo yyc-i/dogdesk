@@ -18,6 +18,11 @@ public partial class App : System.Windows.Application
     /// <summary>歌词服务（网易云 / QQ音乐 / LRCLIB 多源检索）。</summary>
     public LyricsService Lyrics { get; } = new LyricsService();
 
+    /// <summary>设置持久化服务（JSON）。</summary>
+    public SettingsService Settings { get; } = new SettingsService();
+
+    private TrayService? _tray;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -26,8 +31,30 @@ public partial class App : System.Windows.Application
         // 预加载 libmpv 视频内核；缺失/失败不致命，视频壁纸自动回退 MediaElement
         MpvNativeLoader.TryPreload();
 
-        var main = new MainWindow(MediaSession, Wallpaper, Spectrum, Lyrics);
+        var main = new MainWindow(MediaSession, Wallpaper, Spectrum, Lyrics, Settings);
         MainWindow = main;
+
+        // 设置要求自启但快捷方式缺失时补建（非侵入：仅启动文件夹）
+        if (Settings.Current.AutoStart && !AutoStartService.IsEnabled())
+            AutoStartService.SetEnabled(true);
+
+        // 系统托盘
+        _tray = new TrayService();
+        _tray.RestoreRequested += () => Dispatcher.BeginInvoke(() =>
+        {
+            main.Show();
+            main.WindowState = WindowState.Normal;
+            main.Activate();
+        });
+        _tray.ApplyWallpaperRequested += () => Dispatcher.BeginInvoke(main.ApplyCurrentSettings);
+        _tray.StopWallpaperRequested += () => Dispatcher.BeginInvoke(main.StopWallpaperNow);
+        _tray.ExitRequested += () => Dispatcher.BeginInvoke(() =>
+        {
+            main.ForceClose = true;
+            Shutdown();
+        });
+        _tray.Show();
+
         main.Show();
 
         // 后台接入真实系统媒体会话（SMTC 不可用时保持演示数据，不阻塞启动）
@@ -36,6 +63,9 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        Settings.Save();
+        _tray?.Dispose();
+        _tray = null;
         Spectrum.Dispose();
         Wallpaper.Dispose();
         base.OnExit(e);

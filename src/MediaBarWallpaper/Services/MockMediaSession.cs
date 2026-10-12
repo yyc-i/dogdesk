@@ -74,6 +74,12 @@ public sealed class MockMediaSession : IMediaSession
         RaiseTrackChanged();
     }
 
+    public void Seek(double fraction)
+    {
+        _progress = Math.Clamp(fraction, 0, 1) * 100.0;
+        OnPropertyChanged(nameof(Progress01));
+    }
+
     private void OnTick(object? sender, EventArgs e)
     {
         if (!IsPlaying) return;
