@@ -1,0 +1,13 @@
+# .NET / WPF 构建产物
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userprefs
+
+# 本地 native dll（由 NuGet Endpne.LibMPV.Windows 自动还原，无需提交）
+libmpv/
+
+# 临时/打包
+*.zip

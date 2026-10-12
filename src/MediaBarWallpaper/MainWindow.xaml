@@ -1,0 +1,119 @@
+<Window x:Class="MediaBarWallpaper.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MediaBarWallpaper · MVP 控制台"
+        Width="620"
+        Height="760"
+        MinWidth="540"
+        MinHeight="600"
+        Background="{StaticResource BgBrush}"
+        Foreground="{StaticResource TextPrimary}"
+        FontFamily="Microsoft YaHei UI, Segoe UI">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16,14,16,20">
+
+      <!-- 标题 -->
+      <TextBlock Text="MediaBarWallpaper 控制台" FontSize="20" FontWeight="Bold"/>
+      <TextBlock Text="任务栏媒体控制条 + WorkerW 动态壁纸 + libmpv 全格式 + SMTC + 频谱律动 + 桌面歌词"
+                 FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,4,0,14" TextWrapping="Wrap"/>
+
+      <!-- ============ 卡片 1：动态壁纸 ============ -->
+      <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+              BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+        <StackPanel>
+          <TextBlock Text="动态壁纸" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+            <RadioButton x:Name="KindAnimated" GroupName="WallpaperKind" Content="内置动画（推荐先试）" IsChecked="True" VerticalContentAlignment="Center" Checked="OnWallpaperKindChanged"/>
+            <RadioButton x:Name="KindImage" GroupName="WallpaperKind" Content="本地图片" Margin="16,0,0,0" VerticalContentAlignment="Center" Checked="OnWallpaperKindChanged"/>
+            <RadioButton x:Name="KindVideo" GroupName="WallpaperKind" Content="本地视频" Margin="16,0,0,0" VerticalContentAlignment="Center" Checked="OnWallpaperKindChanged"/>
+          </StackPanel>
+
+          <Grid Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="WallpaperPathBox" Style="{StaticResource PanelTextBox}"
+                     Text="（可留空：仅内置动画不需要文件）" IsEnabled="False"/>
+            <Button Grid.Column="1" x:Name="BrowseButton" Style="{StaticResource PanelButton}"
+                    Content="浏览…" Margin="8,0,0,0" Click="OnBrowseClick" IsEnabled="False"/>
+          </Grid>
+
+          <StackPanel Orientation="Horizontal">
+            <Button x:Name="ApplyWallpaperButton" Style="{StaticResource PanelButton}"
+                    Content="应用壁纸" Click="OnApplyWallpaperClick"/>
+            <Button x:Name="StopWallpaperButton" Style="{StaticResource PanelButton}"
+                    Content="停止壁纸" Margin="8,0,0,0" Click="OnStopWallpaperClick"/>
+            <TextBlock x:Name="WallpaperStatusText" Text="未运行"
+                       FontSize="12" Foreground="{StaticResource TextSecondary}"
+                       VerticalAlignment="Center" Margin="12,0,0,0"/>
+          </StackPanel>
+
+          <CheckBox x:Name="SpectrumEnabled" Content="壁纸频谱律动（捕获系统声音，随音乐跳动）"
+                    Margin="0,12,0,0" VerticalContentAlignment="Center"/>
+          <TextBlock Text="提示：需勾选后点「应用壁纸」生效；壁纸为图片/视频时也会叠加律动条。"
+                     FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
+      <!-- ============ 卡片 2：任务栏媒体条 ============ -->
+      <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+              BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+        <StackPanel>
+          <TextBlock Text="任务栏媒体条" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+            <CheckBox x:Name="MediaBarEnabled" Content="显示媒体条" IsChecked="False"
+                      VerticalContentAlignment="Center" Checked="OnMediaBarToggled" Unchecked="OnMediaBarToggled"/>
+            <TextBlock Text="吸附位置" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                       VerticalAlignment="Center" Margin="20,0,6,0"/>
+            <ComboBox x:Name="DockBox" Width="96" SelectedIndex="1" SelectionChanged="OnDockChanged">
+              <ComboBoxItem Content="靠左"/>
+              <ComboBoxItem Content="居中"/>
+              <ComboBoxItem Content="靠右"/>
+            </ComboBox>
+          </StackPanel>
+
+          <Border Background="#12141C" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+            <StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <TextBlock Text="当前曲目" FontSize="11" Foreground="{StaticResource TextSecondary}"/>
+                <TextBlock x:Name="SessionStateText" Text="会话：演示模式" FontSize="11"
+                           Foreground="#FBBF24" Margin="12,0,0,0"/>
+              </StackPanel>
+              <TextBlock x:Name="TrackText" Text="--" FontSize="13" Margin="0,0,0,8"/>
+              <StackPanel Orientation="Horizontal">
+                <Button x:Name="PrevPanelButton" Style="{StaticResource PanelButton}" Content="上一首" Padding="12,6" Click="OnPrevClick"/>
+                <Button x:Name="PlayPanelButton" Style="{StaticResource PanelButton}" Content="暂停" Padding="12,6" Margin="8,0,0,0" Click="OnPlayPauseClick"/>
+                <Button x:Name="NextPanelButton" Style="{StaticResource PanelButton}" Content="下一首" Padding="12,6" Margin="8,0,0,0" Click="OnNextClick"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <CheckBox x:Name="LyricsEnabled" Content="桌面歌词（任务栏上方显示当前歌词行）"
+                    Margin="0,0,0,10" VerticalContentAlignment="Center"
+                    Checked="OnLyricsToggled" Unchecked="OnLyricsToggled"/>
+
+          <TextBlock Text="提示：媒体条以非侵入方式吸附在任务栏区域；未播放时自动半透明。播放器需开启「系统媒体控制」，即可显示真实曲目/封面。歌词源：网易云 / QQ音乐 / LRCLIB 自动回退。"
+                     FontSize="11" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
+      <!-- ============ 卡片 3：日志 ============ -->
+      <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+              BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+        <StackPanel>
+          <TextBlock Text="运行日志" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+          <TextBox x:Name="LogBox" Style="{StaticResource PanelTextBox}"
+                   IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                   VerticalScrollBarVisibility="Auto" Height="180"
+                   FontFamily="Cascadia Mono, Consolas, Microsoft YaHei UI" FontSize="12"/>
+        </StackPanel>
+      </Border>
+
+      <TextBlock Text="已实现：libmpv 全格式视频（硬解，缺失回退 MediaElement）/ SMTC 真实会话 / 封面 / WASAPI 频谱律动 / 桌面歌词（网易云·QQ·LRCLIB）。后续：多显示器实例 / 任务栏避让 / 内存压缩 / 安装器。"
+                 FontSize="11" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+    </StackPanel>
+  </ScrollViewer>
+</Window>
