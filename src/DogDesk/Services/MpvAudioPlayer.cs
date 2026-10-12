@@ -111,20 +111,44 @@ public sealed class MpvAudioPlayer : IMediaSession, IDisposable
         }
     }
 
-    /// <summary>应用均衡器 af 链（空串=旁路）。需在加载曲目前后调用。</summary>
+    /// <summary>应用均衡器+环绕组合 af 链（空串=旁路）。切歌后自动重放。</summary>
     public void ApplyEqualizer(string afChain)
     {
+        _lastAf = afChain ?? "";
         EnsureInit();
         if (_ctx == IntPtr.Zero) return;
         try
         {
-            int err = MpvNative.SetPropertyString(_ctx, "af", afChain ?? "");
+            int err = MpvNative.SetPropertyString(_ctx, "af", _lastAf);
             if (err < 0)
-                Log?.Invoke($"[均衡器] af 链设置失败（已旁路，不影响播放）：{err}");
+                Log?.Invoke($"[音效] af 链设置失败（已旁路，不影响播放）：{err}");
         }
         catch (Exception ex)
         {
-            Log?.Invoke($"[均衡器] af 链异常：{ex.Message}");
+            Log?.Invoke($"[音效] af 链异常：{ex.Message}");
+        }
+    }
+
+    /// <summary>应用音效预设链（均衡器+环绕组合）。等价于 ApplyEqualizer。</summary>
+    public void ApplyEffects(string afChain) => ApplyEqualizer(afChain);
+
+    private string _lastAf = "";
+    private double _speed = 1.0;
+
+    /// <summary>播放倍速（0.5-2.0）。运行时设置 mpv speed 属性。</summary>
+    public void SetSpeed(double speed)
+    {
+        _speed = Math.Clamp(speed, 0.5, 2.0);
+        EnsureInit();
+        if (_ctx == IntPtr.Zero) return;
+        try
+        {
+            int err = MpvNative.SetPropertyDouble(_ctx, "speed", _speed);
+            if (err < 0) Log?.Invoke($"[倍速] speed 设置失败：{err}");
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke($"[倍速] speed 异常：{ex.Message}");
         }
     }
 
@@ -147,6 +171,14 @@ public sealed class MpvAudioPlayer : IMediaSession, IDisposable
             Log?.Invoke($"[内置播放] loadfile 失败：{item.Title}（{err}）");
             return;
         }
+
+        // 切歌后重放音效链与倍速（空 af=旁路）
+        try
+        {
+            if (!string.IsNullOrEmpty(_lastAf)) MpvNative.SetPropertyString(_ctx, "af", _lastAf);
+            if (Math.Abs(_speed - 1.0) > 0.001) MpvNative.SetPropertyDouble(_ctx, "speed", _speed);
+        }
+        catch { }
 
         Log?.Invoke($"[内置播放] ▶ {item.Title} - {item.Artist} [{item.Provider}]");
         RaiseAll();

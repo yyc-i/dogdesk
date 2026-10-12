@@ -22,7 +22,7 @@ public sealed class NavidromeClient : IMusicSource
     private string _user = "";
     private string _password = "";
     private string _apiVersion = "1.16.1";
-    private string _clientName = "mediabarwallpaper";
+    private string _clientName = "dogdesk";
 
     public NavidromeClient() : this(new HttpClient(new HttpClientHandler { AutomaticDecompression = System.Net.DecompressionMethods.All }))
     {

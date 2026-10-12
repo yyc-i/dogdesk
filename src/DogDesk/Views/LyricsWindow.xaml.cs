@@ -34,6 +34,7 @@ public partial class LyricsWindow : Window
     private Run[]? _sylRuns;
     private SolidColorBrush? _accentBrush;
     private SolidColorBrush _plainBrush = new(Colors.White);
+    private readonly TranslateTransform _vibrate = new();
 
     public LyricsWindow(IMediaSession session, LyricsService lyrics, AppSettings settings)
     {
@@ -52,6 +53,17 @@ public partial class LyricsWindow : Window
         NextLine.FontSize = Math.Max(12, CurrentLine.FontSize * 0.62);
         Opacity = Math.Clamp(_settings.LyricsOpacity, 0.3, 1.0);
 
+        // F7：双行开关
+        NextLine.Visibility = _settings.LyricsDualLine ? Visibility.Visible : Visibility.Collapsed;
+
+        // F7：节拍振动的 RenderTransform
+        CurrentLine.RenderTransform = _vibrate;
+
+        // F7：竖排（整卡旋转 90°，最小实现）
+        LyricsCard.LayoutTransform = _settings.LyricsVertical
+            ? new RotateTransform(90)
+            : null;
+
         try
         {
             var c = (Color)ColorConverter.ConvertFromString(_settings.AccentColor);
@@ -64,13 +76,31 @@ public partial class LyricsWindow : Window
         _accentBrush.Freeze();
     }
 
+    /// <summary>F7：节拍命中时的当前行快速振荡（±2-4px）。</summary>
+    public void TriggerBeat()
+    {
+        if (!_settings.LyricsBeatVibrate) return;
+        try
+        {
+            var anim = new System.Windows.Media.Animation.DoubleAnimation
+            {
+                From = -3.5, To = 0, Duration = TimeSpan.FromMilliseconds(90),
+            };
+            _vibrate.BeginAnimation(TranslateTransform.XProperty, anim);
+        }
+        catch { }
+    }
+
     public void Start()
     {
         Relocate();
         Show();
         EnsureStyle();
 
-        _timer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+        // HighFpsMode：歌词 tick 60fps，否则 30fps
+        int intervalMs = _settings.HighFpsMode ? 16 : 33;
+        _timer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(intervalMs) };
+        _timer.Interval = TimeSpan.FromMilliseconds(intervalMs);
         _timer.Tick -= OnTick;
         _timer.Tick += OnTick;
         _timer.Start();
@@ -114,6 +144,10 @@ public partial class LyricsWindow : Window
             x = (int)(wa.Left + (wa.Width - WinW) / 2);
             y = (int)(wa.Bottom - WinH - 8);
         }
+
+        // F7：自定义位置偏移（LyricsOffsetPercent 0-100，50 为默认位，±120px）
+        int offsetPx = (int)((Math.Clamp(_settings.LyricsOffsetPercent, 0, 100) - 50) / 50.0 * 120);
+        y += offsetPx;
 
         int minX = (int)SystemParameters.VirtualScreenLeft;
         int maxX = (int)(SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - WinW);

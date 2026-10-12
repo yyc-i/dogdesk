@@ -25,6 +25,9 @@ public sealed class LyricsOverlayWindow : Window
 
     private LyricsData? _data;
     private int _lineIndex = -1;
+    private bool _dualLine = true;
+    private bool _vertical;
+    private double _offsetPercent = 50.0;
 
     private static readonly IBrush Accent = new SolidColorBrush(Color.FromRgb(0x81, 0x8C, 0xF8));
     private static readonly IBrush DimBrush = new SolidColorBrush(Color.FromRgb(0xB0, 0xB0, 0xC0));
@@ -100,6 +103,35 @@ public sealed class LyricsOverlayWindow : Window
 
     public void ApplyOpacity(double o) => Opacity = Math.Clamp(o, 0.3, 1.0);
 
+    /// <summary>双行开关：是否显示下一行。</summary>
+    public void ApplyDualLine(bool dual)
+    {
+        _dualLine = dual;
+        if (_next is not null)
+            _next.IsVisible = dual;
+    }
+
+    /// <summary>竖排（v0.6）：对歌词面板施加 90° 旋转并交换窗口宽高。</summary>
+    public void ApplyVertical(bool vertical)
+    {
+        _vertical = vertical;
+        if (Content is Border b && b.Child is StackPanel panel)
+        {
+            panel.RenderTransform = vertical
+                ? new RotateTransform(90)
+                : null;
+            Width = vertical ? 120 : 860;
+            Height = vertical ? 860 : 120;
+        }
+    }
+
+    /// <summary>垂直位置偏移（0..100，相对屏幕高度的百分比锚定）。</summary>
+    public void ApplyOffset(double percent)
+    {
+        _offsetPercent = Math.Clamp(percent, 0, 100);
+        if (IsVisible) PositionBottomCenter();
+    }
+
     public void EnsureShown()
     {
         PositionBottomCenter();
@@ -120,9 +152,11 @@ public sealed class LyricsOverlayWindow : Window
             var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
             if (screen is null) return;
             var area = screen.WorkingArea;
-            Position = new PixelPoint(
-                (int)(area.X + (area.Width - Width) / 2),
-                (int)(area.Bottom - Height - 40));
+            int x = (int)(area.X + (area.Width - Width) / 2);
+            // 按偏移百分比（0=顶，100=底）纵向锚定
+            int y = (int)(area.Y + area.Height * (_offsetPercent / 100.0) - Height / 2);
+            y = Math.Clamp(y, (int)area.Y, (int)(area.Bottom - Height));
+            Position = new PixelPoint(x, y);
         }
         catch { /* 定位失败忽略 */ }
     }

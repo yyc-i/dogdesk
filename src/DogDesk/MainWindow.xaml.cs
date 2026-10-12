@@ -6,10 +6,12 @@ using DogDesk.Interop;
 using DogDesk.Models;
 using DogDesk.Services;
 using DogDesk.Services.Equalizer;
+using DogDesk.Services.Effect;
 using DogDesk.Services.DeskBox;
 using DogDesk.Services.MusicSource;
 using DogDesk.Services.Optimizer;
 using DogDesk.Services.Playback;
+using DogDesk.Services.Playlists;
 using DogDesk.Views;
 
 namespace DogDesk;
@@ -95,6 +97,29 @@ public partial class MainWindow : Window
         _idle.IdleTick += OnIdleTick;
         _idle.ActiveTick += OnActiveTick;
         _idle.Start();
+
+        InitV06();
+    }
+
+    /// <summary>F8：窗口关闭时保存播放位置快照（失败静默）。</summary>
+    private void SaveResumeIfNeeded()
+    {
+        try
+        {
+            if (!_settings.ResumePlayback) return;
+            if (_queue.Count == 0) return;
+            int idx = 0;
+            var items = _queue.Items;
+            for (int i = 0; i < items.Count; i++)
+                if (ReferenceEquals(items[i], _queue.Current)) { idx = i; break; }
+            ResumeStore.Save(new ResumeData
+            {
+                Queue = items.ToList(),
+                CurrentIndex = idx,
+                PositionSec = _builtin.PositionSec,
+            });
+        }
+        catch { }
     }
 
     // ================= 设置面板 =================
@@ -683,16 +708,13 @@ public partial class MainWindow : Window
     /// <summary>按当前开关与增益构建 af 链并应用到内置播放器。</summary>
     private void ApplyEqToPlayer()
     {
-        if (!_settings.EqualizerEnabled)
-        {
-            _builtin.ApplyEqualizer("");
-            return;
-        }
-        var preset = EqualizerPreset.From(_settings.EqualizerGains);
-        string chain = EqualizerAf.BuildChain(preset);
+        var eq = _settings.EqualizerEnabled ? EqualizerPreset.From(_settings.EqualizerGains) : EqualizerPreset.From(null);
+        var surround = SurroundEffect.FromSettings(
+            _settings.SurroundEnabled, _settings.SurroundWidth, _settings.SurroundSpeed);
+        string chain = EffectAf.BuildChain(eq, surround);
         _builtin.ApplyEqualizer(chain);
         if (string.IsNullOrEmpty(chain))
-            Log("[均衡器] 当前全部平直（无有效段，已旁路）");
+            Log("[音效] 当前均衡器平直且未启用环绕（已旁路）");
     }
 
     // ================= DeskBox 桌面整理 =================
@@ -1072,6 +1094,7 @@ public partial class MainWindow : Window
         _spectrum.Stop();
         _wallpaper.Dispose();
         _session.PropertyChanged -= OnSessionChanged;
+        SaveResumeIfNeeded();
         SaveSettingsFromUi();
         base.OnClosed(e);
     }

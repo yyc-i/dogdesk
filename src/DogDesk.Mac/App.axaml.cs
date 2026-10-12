@@ -20,7 +20,12 @@ public partial class App : Application
         {
             var window = new Views.MainWindow(Services);
             desktop.MainWindow = window;
-            desktop.ShutdownRequested += (_, _) => Services.Dispose();
+            desktop.ShutdownRequested += (_, _) =>
+            {
+                // v0.6 记忆播放：退出前保存队列与位置
+                Services.SaveOnExit();
+                Services.Dispose();
+            };
             desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
         }
 

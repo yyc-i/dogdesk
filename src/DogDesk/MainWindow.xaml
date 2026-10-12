@@ -13,12 +13,23 @@
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
+
+    <!-- F6 视频背景层（内容层之后、卡片之前，空闲可暂停） -->
+    <MediaElement x:Name="VideoBg" Grid.RowSpan="3" LoadedBehavior="Manual" UnloadedBehavior="Manual"
+                  Opacity="0.55" IsHitTestVisible="False" Stretch="UniformToFill"/>
+
+    <!-- F4 节拍粒子/泛光叠加层（最顶，不拦截鼠标） -->
+    <Canvas x:Name="BeatOverlay" Grid.RowSpan="3" IsHitTestVisible="False"/>
+
+    <!-- F4 节拍白色闪烁层（覆盖整窗，0.25→0 快速淡出） -->
+    <Border x:Name="BeatFlash" Grid.RowSpan="3" Background="#33FFFFFF" Opacity="0" IsHitTestVisible="False"/>
 
     <!-- ===== 标题 ===== -->
     <StackPanel Margin="0,0,0,14">
       <TextBlock Text="dogdesk 控制台" FontSize="22" FontWeight="Bold"/>
-      <TextBlock Text="任务栏媒体条 + 动态壁纸 · v0.5.0 · libmpv 全格式 / 内置音频 / 曲库 / 在线 / Navidrome / 均衡器 / 全屏歌词"
+      <TextBlock Text="任务栏媒体条 + 动态壁纸 · v0.6.0 · libmpv 全格式 / 内置音频 / 曲库 / 在线 / Navidrome / 均衡器 / 3D 环绕 / 电台榜单 / 歌单架"
                  FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,4,0,0" TextWrapping="Wrap"/>
     </StackPanel>
 
@@ -438,11 +449,111 @@
                 </StackPanel>
               </StackPanel>
             </Border>
+
+            <!-- 3D 环绕 + 自定义音效预设 -->
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="3D 环绕 + 自定义音效" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <CheckBox x:Name="SurroundEnabledCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="启用 3D 环绕（extrastereo 加宽 + aphaser 空间感）"
+                          Checked="OnSurroundChanged" Unchecked="OnSurroundChanged"/>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                  <TextBlock Text="声场宽度" Width="80" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                  <Slider x:Name="SurroundWidthSlider" Style="{StaticResource PanelSlider}" Minimum="0" Maximum="6" Width="320" ValueChanged="OnSurroundChanged"/>
+                  <TextBlock x:Name="SurroundWidthValue" Text="2.5" Width="44" VerticalAlignment="Center" FontSize="12" Margin="10,0,0,0" Foreground="{StaticResource TextSecondary}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                  <TextBlock Text="环绕速度" Width="80" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                  <Slider x:Name="SurroundSpeedSlider" Style="{StaticResource PanelSlider}" Minimum="0.1" Maximum="2" Width="320" ValueChanged="OnSurroundChanged"/>
+                  <TextBlock x:Name="SurroundSpeedValue" Text="0.5" Width="44" VerticalAlignment="Center" FontSize="12" Margin="10,0,0,0" Foreground="{StaticResource TextSecondary}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                  <Button x:Name="PresetExportButton" Style="{StaticResource PanelButton}" Content="导出当前预设…" Click="OnPresetExportClick"/>
+                  <Button x:Name="PresetImportButton" Style="{StaticResource PanelButton}" Content="导入预设…" Margin="8,0,0,0" Click="OnPresetImportClick"/>
+                  <TextBlock x:Name="PresetStatusText" Text="" FontSize="12" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                </StackPanel>
+
+                <!-- 倍速 + 音质 -->
+                <TextBlock Text="播放倍速 / 音质" FontSize="13" FontWeight="SemiBold" Margin="0,16,0,6"/>
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                  <TextBlock Text="倍速" Width="80" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                  <Slider x:Name="SpeedSlider" Style="{StaticResource PanelSlider}" Minimum="0.5" Maximum="2" Width="320" ValueChanged="OnSpeedChanged"/>
+                  <TextBlock x:Name="SpeedValue" Text="1.0×" Width="50" VerticalAlignment="Center" FontSize="12" Margin="10,0,0,0" Foreground="{StaticResource TextSecondary}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                  <TextBlock Text="音质档位" Width="80" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                  <ComboBox x:Name="QualityCombo" Style="{StaticResource PanelComboBox}" Width="160" SelectionChanged="OnQualityChanged">
+                    <ComboBoxItem Content="标准" Tag="0"/>
+                    <ComboBoxItem Content="高" Tag="1"/>
+                    <ComboBoxItem Content="超清" Tag="2"/>
+                  </ComboBox>
+                  <TextBlock Text="在线外链接口若无档位差异则不生效（接口可用时生效）" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="{StaticResource TextSecondary}"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
           </StackPanel>
         </ScrollViewer>
       </TabItem>
 
-      <!-- ============ 桌面整理 ============ -->
+      <!-- ============ 电台 / 榜单 ============ -->
+      <TabItem Header="电台/榜单" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="电台（按风格自动生成 60 首队列）" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <ItemsControl x:Name="GenrePanel"/>
+                <TextBlock Text="排行榜（网易云，第三方非官方接口，仅供学习，稳定性不保证）" FontSize="12" Margin="0,14,0,6" Foreground="{StaticResource TextSecondary}"/>
+                <ItemsControl x:Name="ChartPanel"/>
+                <TextBlock x:Name="RadioStatusText" Text="" FontSize="12" Margin="0,10,0,0" Foreground="{StaticResource TextSecondary}"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 歌单架（3D） ============ -->
+      <TabItem Header="歌单架" Style="{StaticResource PanelTabItem}">
+        <Grid Margin="2,0,6,8">
+          <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                  BorderThickness="1" CornerRadius="12" Padding="0">
+            <Grid>
+              <Viewport3D x:Name="RackViewport" Height="360"
+                          MouseLeftButtonDown="OnRackMouseDown" MouseLeftButtonUp="OnRackDragEnd"
+                          MouseMove="OnRackDragMove" MouseWheel="OnRackWheel">
+                <Viewport3D.Camera>
+                  <PerspectiveCamera x:Name="RackCamera" Position="0,0,6" LookDirection="0,0,-1" FieldOfView="50"/>
+                </Viewport3D.Camera>
+                <Viewport3D.Children>
+                  <ModelVisual3D>
+                    <ModelVisual3D.Content>
+                      <AmbientLight Color="#DDDDDD"/>
+                    </ModelVisual3D.Content>
+                  </ModelVisual3D>
+                  <ModelVisual3D x:Name="RackCardsHost">
+                    <ModelVisual3D.Content>
+                      <DirectionalLight Color="#FFFFFF" Direction="-0.3,-0.5,-1"/>
+                    </ModelVisual3D.Content>
+                  </ModelVisual3D>
+                </Viewport3D.Children>
+              </Viewport3D>
+              <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="12,0,0,10"
+                        VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                <Button x:Name="RackReloadButton" Style="{StaticResource PanelButton}" Content="刷新歌单" Click="OnRackReloadClick"/>
+                <TextBox x:Name="ImportIdBox" Style="{StaticResource PanelTextBox}" Width="220" Margin="12,0,0,0"
+                         Tag="粘贴网易云歌单 URL 或 ID"/>
+                <Button x:Name="RackImportIdButton" Style="{StaticResource PanelButton}" Content="导入歌单ID" Margin="6,0,0,0" Click="OnImportPlaylistIdClick"/>
+                <Button x:Name="RackImportFileButton" Style="{StaticResource PanelButton}" Content="导入.m3u/.txt" Margin="6,0,0,0" Click="OnImportPlaylistFileClick"/>
+                <TextBlock x:Name="RackStatusText" Text="拖拽左右旋转 · 滚轮缩放 · 双击卡片播放该歌单"
+                           FontSize="12" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+        </Grid>
+      </TabItem>
+
       <TabItem Header="桌面整理" Style="{StaticResource PanelTabItem}">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="2,0,6,8">
@@ -580,5 +691,15 @@
         </ScrollViewer>
       </TabItem>
     </TabControl>
+
+    <!-- F3 底部实时频谱（RGB 渐变柱条，HighFpsMode 60/否则30fps） -->
+    <Border Grid.Row="2" Background="{StaticResource CardBrush}" CornerRadius="10" Padding="10,4" Margin="0,8,0,0"
+            BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1">
+      <Grid>
+        <Canvas x:Name="BottomSpectrumCanvas" Height="46"/>
+        <TextBlock x:Name="BottomSpectrumHint" Text="♪ 频谱空闲" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Grid>
+    </Border>
   </Grid>
 </Window>

@@ -73,6 +73,13 @@ internal static class MpvNative
     public static double GetPropertyDouble(IntPtr ctx, string name, double fallback = 0)
         => GetProperty(ctx, name, MpvFormat.Double, out double v) < 0 ? fallback : v;
 
+    /// <summary>写入 double 属性（如 speed/volume）；返回 mpv 错误码。</summary>
+    public static int SetPropertyDouble(IntPtr ctx, string name, double value)
+    {
+        double v = value;
+        return SetProperty(ctx, name, MpvFormat.Double, ref v);
+    }
+
     [DllImport(Dll, EntryPoint = "mpv_observe_property")]
     public static extern int ObserveProperty(IntPtr ctx, ulong replyUserData,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int format);

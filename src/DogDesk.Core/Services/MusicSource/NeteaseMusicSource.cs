@@ -63,28 +63,8 @@ public sealed class NeteaseMusicSource : IMusicSource
 
             foreach (var s in songs.EnumerateArray())
             {
-                if (!s.TryGetProperty("id", out var idEl) || idEl.ValueKind != System.Text.Json.JsonValueKind.Number)
-                    continue;
-                string id = idEl.GetInt64().ToString();
-                string title = GetString(s, "name") ?? "未知歌曲";
-                string artist = TryGetArtists(s);
-                string? album = s.TryGetProperty("album", out var al) ? GetString(al, "name") : null;
-                string? pic = null;
-                if (s.TryGetProperty("album", out var al2) && al2.TryGetProperty("picUrl", out var picEl))
-                    pic = picEl.GetString();
-                double durationMs = s.TryGetProperty("duration", out var dur) ? dur.GetDouble() : 0;
-
-                result.Add(new MediaItem
-                {
-                    Title = title,
-                    Artist = artist,
-                    Album = album,
-                    DurationSec = durationMs > 0 ? durationMs / 1000.0 : 0,
-                    Kind = MediaSourceKind.Online,
-                    Uri = BuildPlayUrl(id),
-                    CoverUrl = string.IsNullOrWhiteSpace(pic) ? null : pic,
-                    Provider = Name,
-                });
+                var item = SongToItem(s);
+                if (item is not null) result.Add(item);
             }
         }
         catch (Exception ex)
@@ -95,6 +75,69 @@ public sealed class NeteaseMusicSource : IMusicSource
         return result;
     }
 
+    /// <summary>
+    /// 获取网易云歌单（排行榜）曲目（非官方接口，仅供学习）。
+    /// 榜单 id 见 <see cref="ChartsCatalog.NeteaseCharts"/>。
+    /// </summary>
+    public async Task<IReadOnlyList<MediaItem>> GetChartAsync(string playlistId, int count = 30, CancellationToken ct = default)
+    {
+        var result = new List<MediaItem>();
+        if (string.IsNullOrWhiteSpace(playlistId)) return result;
+        try
+        {
+            string url = $"https://music.163.com/api/v3/playlist/detail?id={Uri.EscapeDataString(playlistId)}";
+            using var resp = await Http.GetAsync(url, ct);
+            resp.EnsureSuccessStatusCode();
+            using var doc = System.Text.Json.JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+
+            if (!doc.RootElement.TryGetProperty("playlist", out var pl) ||
+                !pl.TryGetProperty("tracks", out var tracks) ||
+                tracks.ValueKind != System.Text.Json.JsonValueKind.Array)
+                return result;
+
+            foreach (var s in tracks.EnumerateArray())
+            {
+                var item = SongToItem(s);
+                if (item is not null) result.Add(item);
+                if (result.Count >= count) break;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[NeteaseMusicSource.Chart] {ex.Message}");
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// 统一的歌曲 JSON → MediaItem 映射：兼容搜索接口（artists/album/duration）
+    /// 与歌单接口（ar/al/dt）两种字段形状。
+    /// </summary>
+    private static MediaItem? SongToItem(System.Text.Json.JsonElement s)
+    {
+        if (!s.TryGetProperty("id", out var idEl) || idEl.ValueKind != System.Text.Json.JsonValueKind.Number)
+            return null;
+        string id = idEl.GetInt64().ToString();
+        string title = GetString(s, "name") ?? "未知歌曲";
+        string artist = TryGetArtists(s);
+        string? album = s.TryGetProperty("album", out var al) ? GetString(al, "name") : GetString(s, "al", "name");
+        string? pic = GetString(s, "album", "picUrl") ?? GetString(s, "al", "picUrl");
+        double durationMs = s.TryGetProperty("duration", out var dur) ? dur.GetDouble()
+            : s.TryGetProperty("dt", out var dt) ? dt.GetDouble() : 0;
+
+        return new MediaItem
+        {
+            Title = title,
+            Artist = artist,
+            Album = album,
+            DurationSec = durationMs > 0 ? durationMs / 1000.0 : 0,
+            Kind = MediaSourceKind.Online,
+            Uri = BuildPlayUrl(id),
+            CoverUrl = string.IsNullOrWhiteSpace(pic) ? null : pic,
+            Provider = "网易云",
+        };
+    }
+
     private static string? GetString(System.Text.Json.JsonElement el, string prop)
     {
         if (el.TryGetProperty(prop, out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String)
@@ -102,13 +145,31 @@ public sealed class NeteaseMusicSource : IMusicSource
         return null;
     }
 
+    private static string? GetString(System.Text.Json.JsonElement el, string outer, string inner)
+        => el.TryGetProperty(outer, out var o) ? GetString(o, inner) : null;
+
     private static string TryGetArtists(System.Text.Json.JsonElement s)
     {
-        if (!s.TryGetProperty("artists", out var arr) || arr.ValueKind != System.Text.Json.JsonValueKind.Array)
-            return "";
+        // 兼容搜索接口 artists[] 与歌单接口 ar[]
+        var arr = s.TryGetProperty("artists", out var a1) && a1.ValueKind == System.Text.Json.JsonValueKind.Array ? a1
+            : s.TryGetProperty("ar", out var a2) && a2.ValueKind == System.Text.Json.JsonValueKind.Array ? a2
+            : default;
+        if (arr.ValueKind != System.Text.Json.JsonValueKind.Array) return "";
         var names = arr.EnumerateArray()
             .Select(a => GetString(a, "name"))
             .Where(n => !string.IsNullOrWhiteSpace(n));
         return string.Join(" / ", names);
     }
+}
+
+/// <summary>网易云内置排行榜（非官方接口，仅供学习）。</summary>
+public static class ChartsCatalog
+{
+    public static readonly (string Id, string Name)[] NeteaseCharts =
+    {
+        ("19723756", "云音乐飙升榜"),
+        ("3778678", "云音乐热歌榜"),
+        ("3779629", "云音乐新歌榜"),
+        ("2884035", "云音乐原创榜"),
+    };
 }

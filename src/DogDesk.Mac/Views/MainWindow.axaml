@@ -10,8 +10,8 @@
 
     <!-- ============ 播放 ============ -->
     <TabItem Header="播放">
-      <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="220,*">
-        <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="3"
+      <Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="220,*">
+        <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="4"
                 Background="#222430" CornerRadius="10" Margin="0,0,12,0"
                 Width="220" Height="220" VerticalAlignment="Top">
           <Image x:Name="CoverImage" Stretch="UniformToFill"/>
@@ -21,6 +21,7 @@
           <TextBlock x:Name="NowPlayingTitle" FontSize="22" FontWeight="SemiBold" Text="未在播放"/>
           <TextBlock x:Name="NowPlayingArtist" FontSize="14" Opacity="0.7" Text="—"/>
           <TextBlock x:Name="MpvStatus" FontSize="12" Opacity="0.55" Text=""/>
+          <TextBlock x:Name="ResumeHint" FontSize="12" Opacity="0.7" Foreground="#8fd0a0" Text=""/>
         </StackPanel>
 
         <!-- 队列 -->
@@ -33,6 +34,8 @@
           <Button x:Name="PlayBtn" Content="▶ 播放" Click="Play_Click" MinWidth="90"/>
           <Button x:Name="NextBtn" Content="下一首 ⏭" Click="Next_Click"/>
           <Button x:Name="RepeatBtn" Content="循环: 关" Click="Repeat_Click" Margin="10,0,0,0"/>
+          <Button x:Name="FavBtn" Content="♡ 收藏" Click="Fav_Click" Margin="10,0,0,0"/>
+          <Button x:Name="AddToPlaylistBtn" Content="＋ 加入歌单" Click="AddToPlaylist_Click"/>
         </StackPanel>
 
         <!-- 进度条放第二行下方，横跨 -->
@@ -42,6 +45,35 @@
                   ValueChanged="Progress_ValueChanged"/>
           <TextBlock x:Name="TimeLabel" FontSize="12" Opacity="0.7" Text="0:00 / 0:00"/>
         </StackPanel>
+
+        <!-- v0.6 音效区：倍速 / 音质 / 3D 环绕 / 预设导入导出 -->
+        <Border Grid.Row="3" Grid.Column="1" Background="#1c1e28" CornerRadius="8" Padding="10,8" Margin="0,6,0,0">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <TextBlock Text="倍速" VerticalAlignment="Center"/>
+              <Slider x:Name="SpeedSlider" Minimum="0.5" Maximum="2.0" Width="140"
+                      ValueChanged="Speed_ValueChanged"/>
+              <TextBlock x:Name="SpeedLabel" Width="48" VerticalAlignment="Center" Text="1.0x"/>
+              <TextBlock Text="音质" VerticalAlignment="Center" Margin="12,0,0,0"/>
+              <ComboBox x:Name="QualityBox" Width="120" SelectionChanged="Quality_SelectionChanged">
+                <ComboBoxItem Content="标准"/>
+                <ComboBoxItem Content="高"/>
+                <ComboBoxItem Content="超高"/>
+              </ComboBox>
+              <Button Content="导出预设…" Click="PresetExport_Click" Margin="12,0,0,0"/>
+              <Button Content="导入预设…" Click="PresetImport_Click"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <ToggleSwitch x:Name="SurroundSwitch" Content="3D 环绕" Click="Surround_Toggled"/>
+              <TextBlock Text="宽度" VerticalAlignment="Center"/>
+              <Slider x:Name="SurroundWidthSlider" Minimum="0" Maximum="6" Width="120"
+                      ValueChanged="SurroundWidth_ValueChanged"/>
+              <TextBlock Text="速度" VerticalAlignment="Center"/>
+              <Slider x:Name="SurroundSpeedSlider" Minimum="0.1" Maximum="2" Width="120"
+                      ValueChanged="SurroundSpeed_ValueChanged"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
       </Grid>
     </TabItem>
 
@@ -62,7 +94,7 @@
 
     <!-- ============ 在线音源 ============ -->
     <TabItem Header="在线音源">
-      <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*">
         <Border Grid.Row="0" Background="#3a2a1a" CornerRadius="6" Padding="10,6" Margin="0,0,0,8">
           <TextBlock x:Name="RiskLabel" Foreground="#ffd28a" TextWrapping="Wrap"
                      Text="第三方非官方接口，仅供学习交流，稳定性与版权不保证，随时可能失效。"/>
@@ -74,7 +106,17 @@
           <Button Content="搜索" Click="NeteaseSearch_Click"/>
         </StackPanel>
 
-        <Expander Grid.Row="2" Header="Navidrome（自建服务器）" IsExpanded="True" Margin="0,0,0,8">
+        <!-- v0.6 电台（风格聚合推荐）与排行榜 -->
+        <Border Grid.Row="2" Background="#20243a" CornerRadius="6" Padding="8,6" Margin="0,0,0,8">
+          <StackPanel Spacing="4">
+            <TextBlock Text="电台（按风格聚合 60 首）" Opacity="0.8"/>
+            <WrapPanel x:Name="RadioPanel"/>
+            <TextBlock Text="网易云排行榜" Opacity="0.8" Margin="0,4,0,0"/>
+            <WrapPanel x:Name="ChartPanel"/>
+          </StackPanel>
+        </Border>
+
+        <Expander Grid.Row="3" Header="Navidrome（自建服务器）" IsExpanded="True" Margin="0,0,0,8">
           <StackPanel Spacing="6">
             <StackPanel Orientation="Horizontal" Spacing="8">
               <TextBlock Text="服务器" VerticalAlignment="Center" Width="50"/>
@@ -90,9 +132,9 @@
           </StackPanel>
         </Expander>
 
-        <ListBox Grid.Row="3" x:Name="OnlineList" Height="120" Margin="0,0,0,8"
+        <ListBox Grid.Row="4" x:Name="OnlineList" Height="120" Margin="0,0,0,8"
                  DoubleTapped="OnlineList_DoubleTapped"/>
-        <ListBox Grid.Row="4" x:Name="NavList" DoubleTapped="NavList_DoubleTapped"/>
+        <ListBox Grid.Row="5" x:Name="NavList" DoubleTapped="NavList_DoubleTapped"/>
       </Grid>
     </TabItem>
 
@@ -108,6 +150,31 @@
         <!-- 10 个 Slider 在代码后置中动态生成到 EqPanel -->
         <StackPanel x:Name="EqPanel" Orientation="Horizontal" Spacing="10"/>
       </StackPanel>
+    </TabItem>
+
+    <!-- ============ 歌单（v0.6） ============ -->
+    <TabItem Header="歌单">
+      <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="220,*">
+        <!-- 歌单架：横向封面轮播 -->
+        <ScrollViewer Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto"
+                      Height="150">
+          <WrapPanel x:Name="PlaylistShelfPanel" Orientation="Horizontal"/>
+        </ScrollViewer>
+
+        <!-- 歌单列表 -->
+        <ListBox x:Name="PlaylistList" Grid.Row="1" Grid.Column="0" Margin="0,8,8,0"
+                 SelectionChanged="PlaylistList_SelectionChanged"/>
+
+        <!-- 歌单曲目 -->
+        <Grid Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" RowDefinitions="Auto,*">
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
+            <TextBlock x:Name="PlaylistNameLabel" Text="选择歌单" VerticalAlignment="Center" FontWeight="SemiBold"/>
+            <Button Content="新建歌单…" Click="NewPlaylist_Click"/>
+            <Button Content="移除所选" Click="RemovePlaylistItem_Click"/>
+          </StackPanel>
+          <ListBox x:Name="PlaylistItemsList" Grid.Row="1" DoubleTapped="PlaylistItems_DoubleTapped"/>
+        </Grid>
+      </Grid>
     </TabItem>
 
     <!-- ============ 设置 ============ -->
@@ -142,6 +209,32 @@
                 <TextBlock Text="背景遮罩" VerticalAlignment="Center" Width="60"/>
                 <Slider x:Name="FsOpacitySlider" Minimum="0.4" Maximum="1" Width="240"
                         ValueChanged="FsOpacity_ValueChanged"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Background="#222430" CornerRadius="8" Padding="12">
+            <StackPanel Spacing="8">
+              <TextBlock FontSize="15" FontWeight="SemiBold" Text="桌面歌词增强（v0.6）"/>
+              <ToggleSwitch x:Name="LyricsDualLineSwitch" Content="双行（显示下一行）" Click="LyricsDualLine_Toggled"/>
+              <ToggleSwitch x:Name="LyricsVerticalSwitch" Content="竖排显示" Click="LyricsVertical_Toggled"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="垂直位置" VerticalAlignment="Center" Width="60"/>
+                <Slider x:Name="LyricsOffsetSlider" Minimum="0" Maximum="100" Width="240"
+                        ValueChanged="LyricsOffset_ValueChanged"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Background="#222430" CornerRadius="8" Padding="12">
+            <StackPanel Spacing="8">
+              <TextBlock FontSize="15" FontWeight="SemiBold" Text="主面板外观（v0.6）"/>
+              <ToggleSwitch x:Name="GlassSwitch" Content="毛玻璃 / 半透明" Click="Glass_Toggled"/>
+              <ToggleSwitch x:Name="ResumeSwitch" Content="退出时记忆播放位置" Click="Resume_Toggled"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="面板不透明度" VerticalAlignment="Center" Width="80"/>
+                <Slider x:Name="PanelOpacitySlider" Minimum="0.3" Maximum="1" Width="240"
+                        ValueChanged="PanelOpacity_ValueChanged"/>
               </StackPanel>
             </StackPanel>
           </Border>

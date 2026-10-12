@@ -84,6 +84,20 @@ public sealed class PlaybackQueue
         if (_current < 0) CurrentChanged?.Invoke(null);
     }
 
+    /// <summary>把条目插到当前曲目之后（"下一首播放"）；无当前曲目时追加到队尾。</summary>
+    public void InsertAfterCurrent(MediaItem item)
+    {
+        if (!item.IsValid) return;
+        lock (_lock)
+        {
+            if (_current >= 0 && _current < _items.Count)
+                _items.Insert(_current + 1, item);
+            else
+                _items.Add(item);
+        }
+        QueueChanged?.Invoke();
+    }
+
     public void Clear()
     {
         lock (_lock)

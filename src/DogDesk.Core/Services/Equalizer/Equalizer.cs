@@ -55,7 +55,8 @@ public sealed class EqualizerPreset
 /// </summary>
 public static class EqualizerAf
 {
-    public static string BuildChain(EqualizerPreset preset)
+    /// <summary>返回未包裹的 ffmpeg equalizer 滤镜列表（供 <see cref="Effect.EffectAf"/> 组合）。</summary>
+    public static IReadOnlyList<string> Filters(EqualizerPreset preset)
     {
         var parts = new List<string>();
         for (int i = 0; i < EqualizerPreset.BandCount; i++)
@@ -64,6 +65,12 @@ public static class EqualizerAf
             if (Math.Abs(g) < 0.5) continue;
             parts.Add($"equalizer=f={EqualizerPreset.Frequencies[i]:0}:g={g:0.0}");
         }
+        return parts;
+    }
+
+    public static string BuildChain(EqualizerPreset preset)
+    {
+        var parts = Filters(preset);
         if (parts.Count == 0) return "";
         return "lavfi=[" + string.Join(",", parts) + "]";
     }

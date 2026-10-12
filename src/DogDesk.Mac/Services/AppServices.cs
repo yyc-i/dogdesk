@@ -1,9 +1,11 @@
 using DogDesk.Mac.Services.Mpv;
 using DogDesk.Models;
 using DogDesk.Services;
+using DogDesk.Services.Effect;
 using DogDesk.Services.Equalizer;
 using DogDesk.Services.MusicSource;
 using DogDesk.Services.Playback;
+using DogDesk.Services.Playlists;
 
 namespace DogDesk.Mac.Services;
 
@@ -20,6 +22,8 @@ public sealed class AppServices
     public LyricsService Lyrics { get; } = new();
     public NeteaseMusicSource Netease { get; } = new();
     public NavidromeClient Navidrome { get; } = new();
+    public RadioService Radio { get; }
+    public List<DogDeskPlaylist> Playlists { get; private set; }
 
     /// <summary>播放状态变化（mpv 属性 / 队列切换 / 封面就绪），UI 刷新入口。</summary>
     public event Action? StateChanged;
@@ -47,7 +51,12 @@ public sealed class AppServices
                 Settings.Current.NavidromeUser,
                 Settings.Current.NavidromePassword);
 
-        ApplyEqualizer();
+        // 歌单（含「我的收藏」）与电台
+        Playlists = PlaylistStore.EnsureFavorites(PlaylistStore.Load());
+        Radio = new RadioService(Netease);
+
+        ApplyAudioChain();
+        ApplySpeed();
     }
 
     public bool MpvAvailable => Player.Available;
@@ -88,12 +97,117 @@ public sealed class AppServices
         if (prev is not null) Queue.PlayAt(IndexOf(prev));
     }
 
-    /// <summary>根据当前设置重建并应用均衡器链。</summary>
-    public void ApplyEqualizer()
+    /// <summary>根据当前设置重建「均衡器 + 3D 环绕」合并滤镜链。</summary>
+    public void ApplyAudioChain()
     {
-        var preset = EqualizerPreset.From(Settings.Current.EqualizerGains);
-        string chain = Settings.Current.EqualizerEnabled ? EqualizerAf.BuildChain(preset) : EqualizerAf.Bypass;
-        Player.ApplyEqualizerChain(chain);
+        var eq = EqualizerPreset.From(Settings.Current.EqualizerGains);
+        if (!Settings.Current.EqualizerEnabled) eq = new EqualizerPreset(); // 均衡器关闭→平直
+        var surround = SurroundEffect.FromSettings(
+            Settings.Current.SurroundEnabled,
+            Settings.Current.SurroundWidth,
+            Settings.Current.SurroundSpeed);
+        string chain = EffectAf.BuildChain(eq, surround);
+        Player.ApplyAf(chain);
+    }
+
+    /// <summary>兼容旧调用：均衡器变化后重建整条音频链。</summary>
+    public void ApplyEqualizer() => ApplyAudioChain();
+
+    /// <summary>应用倍速到 mpv（speed 属性）。</summary>
+    public void ApplySpeed() => Player.SetSpeed(Settings.Current.PlaybackSpeed);
+
+    // ============ 歌单 / 收藏 ============
+    private DogDeskPlaylist Favorites =>
+        Playlists.First(p => p.Name == PlaylistStore.FavoritesName);
+
+    /// <summary>把当前曲目加入/移出「我的收藏」，返回是否已收藏。</summary>
+    public bool ToggleFavoriteCurrent()
+    {
+        var cur = Queue.Current;
+        if (cur is null) return false;
+        var fav = Favorites;
+        int exist = fav.Items.FindIndex(i => i.Uri == cur.Uri);
+        if (exist >= 0) fav.Items.RemoveAt(exist);
+        else fav.Items.Add(cur);
+        SavePlaylists();
+        return exist < 0;
+    }
+
+    public bool IsCurrentFavorited()
+    {
+        var cur = Queue.Current;
+        return cur is not null && Favorites.Items.Any(i => i.Uri == cur.Uri);
+    }
+
+    public void AddToPlaylist(string name, MediaItem item)
+    {
+        var pl = Playlists.FirstOrDefault(p => p.Name == name);
+        if (pl is null) { pl = new DogDeskPlaylist { Name = name }; Playlists.Add(pl); }
+        pl.Items.Add(item);
+        SavePlaylists();
+    }
+
+    public void CreatePlaylist(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        if (Playlists.All(p => p.Name != name))
+        {
+            Playlists.Add(new DogDeskPlaylist { Name = name });
+            SavePlaylists();
+        }
+    }
+
+    public void RemoveFromPlaylist(string name, MediaItem item)
+    {
+        var pl = Playlists.FirstOrDefault(p => p.Name == name);
+        pl?.Items.RemoveAll(i => i.Uri == item.Uri);
+        SavePlaylists();
+    }
+
+    private void SavePlaylists() => PlaylistStore.Save(Playlists);
+
+    // ============ 记忆播放 ============
+    /// <summary>退出时保存队列与当前位置（若启用且有有效队列）。</summary>
+    public void SaveOnExit()
+    {
+        if (!Settings.Current.ResumePlayback || Queue.Current is null) return;
+        try
+        {
+            var data = new ResumeData
+            {
+                Queue = Queue.Items.ToList(),
+                CurrentIndex = IndexOf(Queue.Current!),
+                PositionSec = Player.PositionSec,
+            };
+            ResumeStore.Save(data);
+        }
+        catch { }
+    }
+
+    /// <summary>启动时恢复队列与位置；失败静默。返回是否恢复了有效队列。</summary>
+    public bool RestoreOnStartup()
+    {
+        if (!Settings.Current.ResumePlayback) return false;
+        var data = ResumeStore.Load();
+        if (data is not { IsValid: true }) return false;
+        try
+        {
+            Queue.Load(data.Queue, data.CurrentIndex);
+            // 位置在曲目加载后由 UI 触发 seek（mpv duration 就绪）
+            _pendingSeekSec = data.PositionSec;
+            return true;
+        }
+        catch { return false; }
+    }
+
+    private double _pendingSeekSec;
+
+    /// <summary>取出并清除待恢复的播放位置（秒）；无则返回 0。</summary>
+    public double ConsumePendingSeek()
+    {
+        double v = _pendingSeekSec;
+        _pendingSeekSec = 0;
+        return v;
     }
 
     /// <summary>清空队列并停止。</summary>

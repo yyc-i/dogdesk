@@ -132,11 +132,22 @@ public sealed class MpvAudioPlayer : IMediaSession
     public void Next() { /* 由协调层决定队列切歌 */ }
     public void Previous() { /* 由协调层决定队列切歌 */ }
 
-    /// <summary>应用均衡器滤镜链（运行时 set_property af）。空串 = 旁路。</summary>
+    /// <summary>应用均衡器/环绕等音频滤镜链（运行时 set_property af）。空串 = 旁路。</summary>
     public void ApplyEqualizerChain(string chain)
     {
         if (!Available) return;
         MpvLib.SetPropertyString(_ctx, "af", string.IsNullOrEmpty(chain) ? "[]" : chain);
+    }
+
+    /// <summary>通用音频滤镜链设置（v0.6：环绕 + 均衡器合并链）。</summary>
+    public void ApplyAf(string chain) => ApplyEqualizerChain(chain);
+
+    /// <summary>设置播放倍速（mpv speed 属性，0.5 .. 2.0）。</summary>
+    public void SetSpeed(double speed)
+    {
+        if (!Available) return;
+        double v = Math.Clamp(speed, 0.5, 2.0);
+        MpvLib.SetPropertyString(_ctx, "speed", v.ToString("0.0###", System.Globalization.CultureInfo.InvariantCulture));
     }
 
     // ---- 内部 ----

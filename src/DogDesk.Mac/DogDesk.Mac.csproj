@@ -8,7 +8,7 @@
     <LangVersion>latest</LangVersion>
     <RootNamespace>DogDesk.Mac</RootNamespace>
     <AssemblyName>DogDesk.Mac</AssemblyName>
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <Description>DogDesk macOS 版（Avalonia）：播放/曲库/在线音源/均衡器/桌面歌词，v0.5 不支持桌面壁纸</Description>
 
     <!-- 反射绑定，避免编译绑定在缺 x:DataType 时产生警告，保证 0 警告 -->
