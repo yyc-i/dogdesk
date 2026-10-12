@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- 指定 Win10 SDK 投影以使用 SMTC（Windows.Media.Control）等 WinRT API；运行最低版本保持 1809 -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <!-- mpv 嵌入 WPF 需要 WindowsFormsHost 承载宿主窗口（wid 渲染） -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>DogDesk</AssemblyName>
+    <RootNamespace>DogDesk</RootNamespace>
+    <!-- 允许在非 Windows 环境（如 CI / 本开发机）交叉编译 WPF -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- 只分发 x64 libmpv，跳过 arm64（减小输出体积） -->
+    <MpvWindowsArm64Enabled>false</MpvWindowsArm64Enabled>
+    <!-- WPF 以 manifest 声明 PerMonitorV2 是正确做法，抑制 WinForms 对此的 WFAC010 警告 -->
+    <NoWarn>WFAC010</NoWarn>
+    <Version>0.5.0</Version>
+    <Description>任务栏媒体控制条 + 动态壁纸（libmpv 全格式渲染 + SMTC/内置音频路由 + 频谱律动 + 桌面歌词 + 本地曲库 + 在线音源 + Navidrome + 10 段均衡器 + 全屏沉浸式歌词 + 多显示器）</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 跨平台共享核心库（模型/设置/歌词/频谱数学/播放队列/在线音源/均衡器） -->
+    <ProjectReference Include="..\DogDesk.Core\DogDesk.Core.csproj" />
+    <!-- WASAPI loopback 音频捕获 + FFT（频谱壁纸联动） -->
+    <PackageReference Include="Endpne.LibMPV.Windows" Version="0.41.0" />
+    <PackageReference Include="Lyricify.Lyrics.Helper" Version="0.2.0" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 移除 WinForms 隐式全局 using，避免与 WPF 的 Color/Point/Brushes/Image 等冲突；
+         WinForms 仅在 MpvWallpaperWindow 的 XAML 命名空间内使用，代码无需全局 using -->
+    <Using Remove="System.Drawing" />
+    <Using Remove="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 包自带 targets 的 glob 展开在本环境未生效，显式把 libmpv 复制到输出目录 libmpv\win-x64\ -->
+    <Content Include="$(NuGetPackageRoot)endpne.libmpv.windows/0.41.0/build/x64/libmpv-2.dll"
+             Link="libmpv\win-x64\libmpv-2.dll"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

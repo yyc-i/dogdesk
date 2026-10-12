@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
-  将 MediaBarWallpaper 一键推送到你的 GitHub（创建远程仓库 + 首次推送）。
-  在本项目根目录（MediaBarWallpaper/）下，用 PowerShell 运行。
+  将 DogDesk 一键推送到你的 GitHub（创建远程仓库 + 首次推送）。
+  在本项目根目录（DogDesk/）下，用 PowerShell 运行。
 
 .方式一（推荐：已安装 GitHub CLI gh）
   1) winget install --id GitHub.cli      # 若未安装 gh
@@ -18,7 +18,7 @@ param(
     [Parameter(Mandatory = $true)][string]$Username,
     [string]$Token = "",
     [ValidateSet("public", "private")][string]$Visibility = "public",
-    [string]$RepoName = "MediaBarWallpaper"
+    [string]$RepoName = "dogdesk"
 )
 
 $ErrorActionPreference = "Stop"
@@ -34,7 +34,7 @@ if (-not (git config user.name)) { git config user.name  $Username | Out-Null }
 if (-not (git config user.email)) { git config user.email "$Username@users.noreply.github.com" | Out-Null }
 
 git add -A
-git commit -m "MediaBarWallpaper v0.3.0" 2>$null
+git commit -m "DogDesk v0.3.0" 2>$null
 git branch -M main
 
 $repoUrl = "https://github.com/$Username/$RepoName.git"

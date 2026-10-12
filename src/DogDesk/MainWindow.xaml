@@ -1,0 +1,584 @@
+<Window x:Class="DogDesk.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="dogdesk · 控制台"
+        Width="720"
+        Height="820"
+        MinWidth="640"
+        MinHeight="660"
+        Background="{StaticResource BgBrush}"
+        Foreground="{StaticResource TextPrimary}"
+        FontFamily="Microsoft YaHei UI, Segoe UI">
+  <Grid Margin="18,14,18,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- ===== 标题 ===== -->
+    <StackPanel Margin="0,0,0,14">
+      <TextBlock Text="dogdesk 控制台" FontSize="22" FontWeight="Bold"/>
+      <TextBlock Text="任务栏媒体条 + 动态壁纸 · v0.5.0 · libmpv 全格式 / 内置音频 / 曲库 / 在线 / Navidrome / 均衡器 / 全屏歌词"
+                 FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+    </StackPanel>
+
+    <TabControl Grid.Row="1" Style="{StaticResource PanelTab}">
+
+      <!-- ============ 壁纸 ============ -->
+      <TabItem Header="壁纸" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="壁纸内容" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                  <RadioButton x:Name="KindAnimated" Style="{StaticResource PanelRadio}" GroupName="WallpaperKind"
+                               Content="内置动画" IsChecked="True" Checked="OnWallpaperKindChanged"/>
+                  <RadioButton x:Name="KindImage" Style="{StaticResource PanelRadio}" GroupName="WallpaperKind"
+                               Content="本地图片" Margin="16,0,0,0" Checked="OnWallpaperKindChanged"/>
+                  <RadioButton x:Name="KindVideo" Style="{StaticResource PanelRadio}" GroupName="WallpaperKind"
+                               Content="本地视频（全格式）" Margin="16,0,0,0" Checked="OnWallpaperKindChanged"/>
+                </StackPanel>
+
+                <StackPanel x:Name="AnimStylePanel" Orientation="Horizontal" Margin="0,0,0,10">
+                  <TextBlock Text="动画样式" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Margin="0,0,10,0"/>
+                  <RadioButton x:Name="AnimAurora" Style="{StaticResource PanelRadio}" GroupName="AnimationStyle"
+                               Content="极光流动" IsChecked="True" Checked="OnSettingChanged"/>
+                  <RadioButton x:Name="AnimParticles" Style="{StaticResource PanelRadio}" GroupName="AnimationStyle"
+                               Content="粒子星空" Margin="16,0,0,0" Checked="OnSettingChanged"/>
+                </StackPanel>
+
+                <Grid Margin="0,0,0,10">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBox x:Name="WallpaperPathBox" Style="{StaticResource PanelTextBox}"
+                           TextChanged="OnPathBoxChanged"/>
+                  <Button Grid.Column="1" x:Name="BrowseButton" Style="{StaticResource PanelButton}"
+                          Content="浏览文件…" Margin="8,0,0,0" Click="OnBrowseClick"/>
+                </Grid>
+
+                <Grid Margin="0,0,0,10">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBox x:Name="WallpaperFolderBox" Style="{StaticResource PanelTextBox}"
+                           TextChanged="OnFolderBoxChanged"/>
+                  <Button Grid.Column="1" x:Name="FolderBrowseButton" Style="{StaticResource PanelButton}"
+                          Content="浏览文件夹…" Margin="8,0,0,0" Click="OnFolderBrowseClick"/>
+                </Grid>
+
+                <TextBlock Text="图片/视频填充" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,6"/>
+                <ComboBox x:Name="StretchCombo" Style="{StaticResource PanelComboBox}"
+                          Width="180" HorizontalAlignment="Left" SelectionChanged="OnSettingChanged">
+                  <ComboBoxItem Content="裁剪铺满（Cover，推荐）"/>
+                  <ComboBoxItem Content="完整显示（Contain）"/>
+                  <ComboBoxItem Content="拉伸铺满（Stretch）"/>
+                </ComboBox>
+
+                <StackPanel Orientation="Horizontal" Margin="0,14,0,2">
+                  <TextBlock Text="壁纸亮度" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Width="70"/>
+                  <Slider x:Name="BrightnessSlider" Style="{StaticResource PanelSlider}" Minimum="0.3" Maximum="1.0"
+                          ValueChanged="OnSettingChanged" Width="220" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="BrightnessValue" Text="100%" FontSize="12"
+                             Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+
+                <CheckBox x:Name="SlideshowCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="图片文件夹轮播（每 N 秒自动切换）" Margin="0,8,0,0"
+                          Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                  <TextBlock Text="轮播间隔" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Width="70"/>
+                  <Slider x:Name="SlideshowIntervalSlider" Style="{StaticResource PanelSlider}" Minimum="5" Maximum="60"
+                          ValueChanged="OnSettingChanged" Width="180" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="SlideshowIntervalValue" Text="15s" FontSize="12"
+                             Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="控制" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                <StackPanel Orientation="Horizontal">
+                  <Button x:Name="ApplyWallpaperButton" Style="{StaticResource PanelButton}"
+                          Content="应用壁纸" Click="OnApplyWallpaperClick"/>
+                  <Button x:Name="StopWallpaperButton" Style="{StaticResource PanelButton}"
+                          Content="停止壁纸" Margin="8,0,0,0" Click="OnStopWallpaperClick"/>
+                  <TextBlock x:Name="WallpaperStatusText" Text="未运行" FontSize="12"
+                             Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                </StackPanel>
+                <TextBlock Text="提示：勾选「频谱」页开关后，应用壁纸即叠加律动；视频走 libmpv 全格式硬解，缺失自动回退 WPF。"
+                           FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 媒体条 ============ -->
+      <TabItem Header="媒体条" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <CheckBox x:Name="MediaBarCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="显示任务栏媒体条" Margin="0,0,0,12"
+                          Checked="OnMediaBarToggled" Unchecked="OnMediaBarToggled"/>
+
+                <Border Background="#12141C" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*"/>
+                      <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="当前曲目" FontSize="11" Foreground="{StaticResource TextSecondary}"/>
+                        <TextBlock x:Name="SessionBadgeText" Text="演示模式" FontSize="11"
+                                   Foreground="#FBBF24" Margin="12,0,0,0"/>
+                      </StackPanel>
+                      <TextBlock x:Name="TitleBarText" Text="未在播放" FontSize="13" Margin="0,4,0,6"
+                                 TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                      <Button x:Name="PrevPanelButton" Style="{StaticResource PanelButton}" Content="上一首" Padding="12,6" Click="OnPrevClick"/>
+                      <Button x:Name="PlayButton2" Style="{StaticResource PanelButton}" Content="播放" Padding="12,6" Margin="8,0,0,0" Click="OnPlayPauseClick"/>
+                      <Button x:Name="NextPanelButton" Style="{StaticResource PanelButton}" Content="下一首" Padding="12,6" Margin="8,0,0,0" Click="OnNextClick"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                  <TextBlock Text="吸附位置" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Width="70"/>
+                  <ComboBox x:Name="DockCombo" Style="{StaticResource PanelComboBox}" Width="120"
+                            SelectionChanged="OnDockChanged">
+                    <ComboBoxItem Content="靠左"/>
+                    <ComboBoxItem Content="居中"/>
+                    <ComboBoxItem Content="靠右"/>
+                  </ComboBox>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                  <TextBlock Text="宽度" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Width="70"/>
+                  <Slider x:Name="WidthSlider" Style="{StaticResource PanelSlider}" Minimum="240" Maximum="520"
+                          ValueChanged="OnSettingChanged" Width="220" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="WidthValue" Text="360px" FontSize="12"
+                             Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+
+                <CheckBox x:Name="AutoHideCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="未播放自动淡出" Margin="0,0,0,8"
+                          Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+                <CheckBox x:Name="GradientCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="封面主色玻璃感渐变背景" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+
+                <TextBlock Text="提示：鼠标滚轮在媒体条上滚动可调节系统音量；拖动进度条可跳转播放位置。"
+                           FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,10,0,0" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 桌面歌词 ============ -->
+      <TabItem Header="桌面歌词" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <CheckBox x:Name="LyricsCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="显示桌面歌词（任务栏上方）" Margin="0,0,0,14"
+                          Checked="OnLyricsToggled" Unchecked="OnLyricsToggled"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                  <TextBlock Text="字号" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Width="70"/>
+                  <Slider x:Name="FontSlider" Style="{StaticResource PanelSlider}" Minimum="14" Maximum="34"
+                          ValueChanged="OnSettingChanged" Width="220" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="FontValue" Text="22px" FontSize="12"
+                             Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                  <TextBlock Text="透明度" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Width="70"/>
+                  <Slider x:Name="OpacitySlider" Style="{StaticResource PanelSlider}" Minimum="0.3" Maximum="1.0"
+                          ValueChanged="OnSettingChanged" Width="220" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="OpacityValue" Text="100%" FontSize="12"
+                             Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+
+                <CheckBox x:Name="KaraokeCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="逐字高亮（音节级卡拉OK，源支持时）" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+
+                <TextBlock Text="全屏沉浸式歌词（Folia 风格）" FontSize="13" FontWeight="SemiBold"
+                           Margin="0,16,0,8"/>
+                <CheckBox x:Name="FullscreenLyricsCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="显示全屏沉浸式歌词动画（Esc / 点击退出）"
+                          Checked="OnFullscreenLyricsToggled" Unchecked="OnFullscreenLyricsToggled"/>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <TextBlock Text="动画样式" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Width="70"/>
+                  <ComboBox x:Name="FullscreenStyleCombo" Style="{StaticResource PanelComboBox}" Width="160"
+                            SelectionChanged="OnSettingChanged">
+                    <ComboBoxItem Content="流光（横向渐变扫过）"/>
+                    <ComboBoxItem Content="浮名（逐字放大浮现）"/>
+                    <ComboBoxItem Content="群唱（高亮脉冲）"/>
+                  </ComboBox>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <TextBlock Text="背景遮罩" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Width="70"/>
+                  <Slider x:Name="FullscreenOpacitySlider" Style="{StaticResource PanelSlider}" Minimum="0.3" Maximum="1.0"
+                          ValueChanged="OnSettingChanged" Width="220" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="FullscreenOpacityValue" Text="92%" FontSize="12"
+                             Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+                <CheckBox x:Name="DynamicThemeCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="动态配色（封面主色联动渐变主题：媒体条/桌面歌词/全屏歌词）"
+                          Margin="0,10,0,0" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+
+                <TextBlock Text="歌词源：网易云 → QQ音乐 → LRCLIB 自动回退；无匹配时显示 ♪。"
+                           FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,10,0,0" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 频谱 ============ -->
+      <TabItem Header="频谱" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <CheckBox x:Name="SpectrumCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="壁纸频谱律动（捕获系统声音）" Margin="0,0,0,14"
+                          Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                  <TextBlock Text="可视化样式" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Width="70"/>
+                  <ComboBox x:Name="SpectrumStyleCombo" Style="{StaticResource PanelComboBox}" Width="140"
+                            SelectionChanged="OnSettingChanged">
+                    <ComboBoxItem Content="柱状律动"/>
+                    <ComboBoxItem Content="圆环律动"/>
+                    <ComboBoxItem Content="波形曲线"/>
+                  </ComboBox>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                  <TextBlock Text="灵敏度" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Width="70"/>
+                  <Slider x:Name="SensitivitySlider" Style="{StaticResource PanelSlider}" Minimum="0.5" Maximum="3.0"
+                          ValueChanged="OnSettingChanged" Width="220" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="SensitivityValue" Text="1.0×" FontSize="12"
+                             Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                  <TextBlock Text="回落速度" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Width="70"/>
+                  <Slider x:Name="SmoothingSlider" Style="{StaticResource PanelSlider}" Minimum="0.4" Maximum="0.95"
+                          ValueChanged="OnSettingChanged" Width="220" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="SmoothingValue" Text="0.72" FontSize="12"
+                             Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+
+                <TextBlock Text="提示：修改后需重新「应用壁纸」生效；频谱数据来自系统混音（WASAPI loopback）。"
+                           FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,10,0,0" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 曲库 ============ -->
+      <TabItem Header="曲库" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="本地曲库（mp3 / flac / wav / m4a / ogg / aac）" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                <Grid Margin="0,0,0,10">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBox x:Name="LibraryFolderBox" Style="{StaticResource PanelTextBox}" TextChanged="OnLibraryFolderChanged"/>
+                  <Button Grid.Column="1" x:Name="BrowseLibraryButton" Style="{StaticResource PanelButton}"
+                          Content="选择文件夹…" Margin="8,0,0,0" Click="OnBrowseLibraryClick"/>
+                </Grid>
+                <StackPanel Orientation="Horizontal">
+                  <Button x:Name="ScanLibraryButton" Style="{StaticResource PanelButton}" Content="扫描曲库" Click="OnScanLibraryClick"/>
+                  <TextBlock x:Name="LibraryStatusText" Text="未扫描" FontSize="12"
+                             Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                  <TextBlock Text="循环模式" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                             VerticalAlignment="Center" Margin="24,0,0,6"/>
+                  <ComboBox x:Name="RepeatCombo" Style="{StaticResource PanelComboBox}" Width="120" Margin="6,0,0,0"
+                            SelectionChanged="OnRepeatChanged">
+                    <ComboBoxItem Content="列表播完停止"/>
+                    <ComboBoxItem Content="列表循环"/>
+                    <ComboBoxItem Content="单曲循环"/>
+                  </ComboBox>
+                </StackPanel>
+                <ListView x:Name="LibraryList" Margin="0,12,0,0" Height="380"
+                          Background="#12141C" Foreground="{StaticResource TextPrimary}"
+                          BorderBrush="{StaticResource CardBorderBrush}"
+                          MouseDoubleClick="OnLibraryDoubleClick">
+                  <ListView.View>
+                    <GridView>
+                      <GridViewColumn Header="标题" Width="260" DisplayMemberBinding="{Binding Title}"/>
+                      <GridViewColumn Header="艺人" Width="160" DisplayMemberBinding="{Binding Artist}"/>
+                      <GridViewColumn Header="时长" Width="80" DisplayMemberBinding="{Binding DurationText}"/>
+                      <GridViewColumn Header="来源" Width="80" DisplayMemberBinding="{Binding Provider}"/>
+                    </GridView>
+                  </ListView.View>
+                </ListView>
+                <TextBlock Text="提示：双击曲目即加入播放队列并播放；「媒体条」页的上一首/下一首/进度条跟随内置播放器。"
+                           FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 在线音源 ============ -->
+      <TabItem Header="在线音源" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="在线 / 私人云" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <TextBlock x:Name="NeteaseRiskText" Text="⚠ 网易云为第三方非官方接口，仅供学习交流，稳定性不保证，随时可能失效。"
+                           FontSize="11" Foreground="#FBBF24" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+                <Grid Margin="0,0,0,10">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBox x:Name="OnlineSearchBox" Style="{StaticResource PanelTextBox}"
+                           KeyDown="OnOnlineSearchKeyDown"/>
+                  <Button Grid.Column="1" x:Name="OnlineSearchButton" Style="{StaticResource PanelButton}"
+                          Content="搜索网易云" Margin="8,0,0,0" Click="OnOnlineSearchClick"/>
+                </Grid>
+
+                <!-- Navidrome 配置 -->
+                <Border Background="#12141C" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                  <StackPanel>
+                    <TextBlock Text="Navidrome（私人 Subsonic 云，凭据仅明文存本机 settings.json）" FontSize="12"
+                               Foreground="{StaticResource TextSecondary}" Margin="0,0,0,8"/>
+                    <TextBox x:Name="NaviServerBox" Style="{StaticResource PanelTextBox}" Margin="0,0,0,6"
+                             Tag="服务器地址，如 http://localhost:4533"/>
+                    <TextBox x:Name="NaviUserBox" Style="{StaticResource PanelTextBox}" Margin="0,0,0,6" Tag="用户名"/>
+                    <TextBox x:Name="NaviPassBox" Style="{StaticResource PanelTextBox}" Margin="0,0,0,6" Tag="密码"/>
+                    <StackPanel Orientation="Horizontal">
+                      <Button x:Name="NaviTestButton" Style="{StaticResource PanelButton}" Content="测试连接" Click="OnNaviTestClick"/>
+                      <Button x:Name="NaviSearchButton" Style="{StaticResource PanelButton}" Content="搜索 Navidrome" Margin="8,0,0,0" Click="OnNaviSearchClick"/>
+                      <Button x:Name="NaviAlbumButton" Style="{StaticResource PanelButton}" Content="加载最新专辑" Margin="8,0,0,0" Click="OnNaviAlbumClick"/>
+                      <TextBlock x:Name="NaviStatusText" Text="" FontSize="12"
+                                 Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+
+                <ListView x:Name="OnlineList" Margin="0,0,0,0" Height="300"
+                          Background="#12141C" Foreground="{StaticResource TextPrimary}"
+                          BorderBrush="{StaticResource CardBorderBrush}"
+                          MouseDoubleClick="OnOnlineDoubleClick">
+                  <ListView.View>
+                    <GridView>
+                      <GridViewColumn Header="标题" Width="240" DisplayMemberBinding="{Binding Title}"/>
+                      <GridViewColumn Header="艺人" Width="140" DisplayMemberBinding="{Binding Artist}"/>
+                      <GridViewColumn Header="专辑" Width="140" DisplayMemberBinding="{Binding Album}"/>
+                      <GridViewColumn Header="时长" Width="70" DisplayMemberBinding="{Binding DurationText}"/>
+                    </GridView>
+                  </ListView.View>
+                </ListView>
+                <TextBlock Text="提示：双击结果加入播放队列并播放；在线流由内置 libmpv 直接拉取。"
+                           FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 均衡器 ============ -->
+      <TabItem Header="均衡器" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <CheckBox x:Name="EqualizerEnabledCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="启用 10 段均衡器（libmpv ffmpeg equalizer，实时作用于内置播放）"
+                          Margin="0,0,0,12" Checked="OnEqualizerEnabledChanged" Unchecked="OnEqualizerEnabledChanged"/>
+                <ItemsControl x:Name="EqPanel"/>
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                  <Button x:Name="EqResetButton" Style="{StaticResource PanelButton}" Content="复位为平直（0 dB）" Click="OnEqResetClick"/>
+                  <TextBlock Text="频段：31Hz .. 16kHz，增益 −12 .. +12 dB；仅 |增益|≥0.5dB 的段生效。"
+                             FontSize="11" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="16,0,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 桌面整理 ============ -->
+      <TabItem Header="桌面整理" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="DeskBox 风格桌面格子（虚拟收纳，文件不移动原位）" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <TextBlock Text="仅在自己的壁纸叠加层上画格子，不 hook Explorer、不修改系统。拖入文件=添加格子，双击=打开原文件。"
+                           FontSize="11" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                <CheckBox x:Name="DeskBoxEnabledCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="启用桌面格子层（需先在「壁纸」页应用壁纸）"
+                          Checked="OnDeskBoxToggled" Unchecked="OnDeskBoxToggled"/>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <CheckBox x:Name="DeskBoxTodoCheck" Style="{StaticResource PanelCheckBox}" Content="待办小组件" Margin="0,0,16,0"/>
+                  <CheckBox x:Name="DeskBoxNoteCheck" Style="{StaticResource PanelCheckBox}" Content="随记小组件" Margin="0,0,16,0"/>
+                  <CheckBox x:Name="DeskBoxMusicCheck" Style="{StaticResource PanelCheckBox}" Content="音乐控制小组件" IsChecked="True"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                  <Button x:Name="DeskBoxAddFileButton" Style="{StaticResource PanelButton}" Content="添加文件格子…" Click="OnDeskAddFileClick"/>
+                  <Button x:Name="DeskBoxResetButton" Style="{StaticResource PanelButton}" Content="重置布局" Margin="8,0,0,0" Click="OnDeskResetClick"/>
+                  <TextBlock x:Name="DeskBoxStatusText" Text="" FontSize="12"
+                             Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 系统优化 ============ -->
+      <TabItem Header="系统优化" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <!-- 风险横幅（常驻） -->
+            <Border Background="#3A1414" BorderBrush="#7A2020" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,12">
+              <TextBlock Text="⚠ 系统修改有风险，建议先创建系统还原点，后果自负。所有项默认不勾选，仅在你显式勾选并点击执行后才会以管理员权限修改系统，绝不自动执行。"
+                         Foreground="#FCA5A5" FontSize="12" TextWrapping="Wrap"/>
+            </Border>
+
+            <!-- ① 软件与应用 -->
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="① 软件与应用管理" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                  <Button x:Name="AppxLoadButton" Style="{StaticResource PanelButton}" Content="列出已安装应用" Click="OnAppxLoadClick"/>
+                  <Button x:Name="AppxUninstallButton" Style="{StaticResource PanelButton}" Content="卸载所选（提权）" Margin="8,0,0,0" Click="OnAppxUninstallClick"/>
+                </StackPanel>
+                <ListView x:Name="AppxList" Height="150" Background="#12141C" Foreground="{StaticResource TextPrimary}"
+                          BorderBrush="{StaticResource CardBorderBrush}"/>
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBox x:Name="WingetSearchBox" Style="{StaticResource PanelTextBox}" Tag="winget 搜索关键词，如 notepad++"/>
+                  <Button Grid.Column="1" x:Name="WingetInstallButton" Style="{StaticResource PanelButton}" Content="winget 安装 ID…" Margin="8,0,0,0" Click="OnWingetInstallClick"/>
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <!-- ② 优化项 -->
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="② 系统优化项（六大类，默认全部不勾选）" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <ItemsControl x:Name="OpsPanel"/>
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                  <Button x:Name="OpsExecuteButton" Style="{StaticResource PanelButton}" Content="执行勾选项（提权，逐项确认）" Click="OnOpsExecuteClick"/>
+                  <Button x:Name="OpsRevertButton" Style="{StaticResource PanelButton}" Content="撤销勾选项" Margin="8,0,0,0" Click="OnOpsRevertClick"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- 执行日志 -->
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="执行日志" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <TextBox x:Name="OptLogBox" Style="{StaticResource PanelTextBox}" IsReadOnly="True" AcceptsReturn="True"
+                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Height="180"
+                         FontFamily="Cascadia Mono, Consolas, Microsoft YaHei UI" FontSize="11"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 设置 ============ -->
+      <TabItem Header="设置" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="主题强调色（作用于媒体条进度/歌词高亮/渐变底）" FontSize="13"
+                           FontWeight="SemiBold" Margin="0,0,0,10"/>
+                <StackPanel Orientation="Horizontal">
+                  <Button x:Name="Accent1" Width="30" Height="30" Margin="0,0,8,0" Tag="#818CF8" Click="OnAccentClick"/>
+                  <Button x:Name="Accent2" Width="30" Height="30" Margin="0,0,8,0" Tag="#F472B6" Click="OnAccentClick"/>
+                  <Button x:Name="Accent3" Width="30" Height="30" Margin="0,0,8,0" Tag="#34D399" Click="OnAccentClick"/>
+                  <Button x:Name="Accent4" Width="30" Height="30" Margin="0,0,8,0" Tag="#38BDF8" Click="OnAccentClick"/>
+                  <Button x:Name="Accent5" Width="30" Height="30" Margin="0,0,8,0" Tag="#FBBF24" Click="OnAccentClick"/>
+                  <Button x:Name="Accent6" Width="30" Height="30" Margin="0,0,8,0" Tag="#F87171" Click="OnAccentClick"/>
+                </StackPanel>
+
+                <CheckBox x:Name="AutoStartCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="开机自启（启动文件夹快捷方式，非侵入）" Margin="0,16,0,8"
+                          Checked="OnAutoStartChanged" Unchecked="OnAutoStartChanged"/>
+                <CheckBox x:Name="TrayCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="关闭窗口时最小化到托盘（后台驻留）" Margin="0,0,0,8"
+                          Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+                <CheckBox x:Name="IdleFpsCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="空闲降帧（未播放时降低动画帧率省电）" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+
+                <Button x:Name="ResetButton" Style="{StaticResource PanelButton}" Content="恢复默认设置"
+                        Margin="0,16,0,0" Click="OnResetClick"/>
+              </StackPanel>
+            </Border>
+
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="运行日志" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <TextBox x:Name="LogBox" Style="{StaticResource PanelTextBox}"
+                         IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto" Height="220"
+                         FontFamily="Cascadia Mono, Consolas, Microsoft YaHei UI" FontSize="12"/>
+              </StackPanel>
+            </Border>
+
+            <TextBlock Text="dogdesk v0.5.0 · MIT · 非侵入式（不改注册表/不 hook Explorer）· 空闲自动压缩工作集"
+                       FontSize="11" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+  </Grid>
+</Window>

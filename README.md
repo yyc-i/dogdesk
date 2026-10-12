@@ -1,8 +1,12 @@
-# MediaBarWallpaper（v0.5.0）
+# DogDesk（v0.5.0）
+
+仓库：https://github.com/yyc-i/dogdesk  ·  显示名 `dogdesk`（内部标识 DogDesk）。
 
 **任务栏媒体控制条 + WorkerW 动态壁纸 + libmpv 全格式视频 + 多源桌面歌词 + Folia 风格全屏歌词动画 + 内置播放内核 + 桌面整理 + 系统优化 + macOS 版** —— Windows 10/11 桌面美化工具（macOS 版同步提供）。
 
-形态参考开源项目 [AF Media Bar](https://github.com/Fervent-Tempo/AF-Media-Bar)（任务栏媒体控制条），并集成动态壁纸能力。v0.5.0 起引入跨平台共享核心库（`MediaBarWallpaper.Core`），Windows（WPF）与 macOS（Avalonia）双端共用同一套模型/设置/歌词/频谱/播放队列/音源/均衡器逻辑。
+> 注：v0.5.0 起由 MediaBarWallpaper 更名，旧 `%AppData%\MediaBarWallpaper` 配置（settings.json / deskbox.json）在首次启动时自动迁移到 `%AppData%\DogDesk\`，旧文件保留不删除。
+
+形态参考开源项目 [AF Media Bar](https://github.com/Fervent-Tempo/AF-Media-Bar)（任务栏媒体控制条），并集成动态壁纸能力。v0.5.0 起引入跨平台共享核心库（`DogDesk.Core`），Windows（WPF）与 macOS（Avalonia）双端共用同一套模型/设置/歌词/频谱/播放队列/音源/均衡器逻辑。
 
 ## 功能（v0.5.0）
 
@@ -26,7 +30,7 @@
 | 桌面歌词 | 任务栏上方当前行+下一行；多源检索：网易云 → QQ音乐 → LRCLIB；逐字卡拉OK 高亮（音节级），无逐字数据自动降级逐行 |
 | **桌面整理 DeskBox 风格（v0.5，Windows）** | 每屏壁纸上叠加自绘**文件格子**：虚拟收纳（文件不移动原位），拖入文件/文件夹即添加格子、双击打开原文件、右键重命名/删格/折叠/换色；小组件：**待办 / 随记 / 音乐控制**；每屏独立布局记忆（`deskbox.json`），退出与定时自动快照（`deskbox.backup.json`）；不 hook Explorer、不驻留修改系统 |
 | **系统优化模块（v0.5，Windows）** | 独立 Tab，三分区：① 软件与应用管理——Appx 应用列表/卸载（系统包黄色标注）、winget 搜索/安装；② **30 项系统优化**（隐私 7 / 安全 6 / 游戏性能 5 / 更新 4 / 电源 4 / 声音 4，每项含中文说明+风险等级+执行/撤销脚本）；③ Win11Debloat 风格 UWP 批量移除与去遥测 |
-| 设置持久化 | 全部设置写入 `%AppData%\MediaBarWallpaper\settings.json`，重启自动恢复 |
+| 设置持久化 | 全部设置写入 `%AppData%\DogDesk\settings.json`，重启自动恢复 |
 | 系统托盘 | 关闭窗口最小化到托盘（可关），右键：显示主界面 / 应用壁纸 / 停止壁纸 / 退出 |
 | 开机自启 | 非侵入：仅创建「启动」文件夹快捷方式，不写注册表 |
 | 控制台 | 深色分页 UI（壁纸/媒体条/桌面歌词/频谱/曲库/在线音源/均衡器/桌面整理/系统优化/设置），实时日志 |
@@ -60,7 +64,7 @@
 ## macOS 版（Avalonia）
 
 - 技术路线：**Avalonia 11**（官方 WPF 跨平台迁移框架，原生 macOS 后端，官方宣称 "no Mac needed to compile"，可在 Linux 交叉发布 osx-x64/osx-arm64）—— 来源：[Avalonia UI for macOS](https://avaloniaui.net/avalonia/macos/)
-- 共享核心库 `MediaBarWallpaper.Core`（net8.0，**无 WPF 依赖**）承载模型/设置/歌词检索/频谱数学/播放队列/网易云与 Navidrome 客户端/均衡器参数，Windows 与 macOS 双端复用
+- 共享核心库 `DogDesk.Core`（net8.0，**无 WPF 依赖**）承载模型/设置/歌词检索/频谱数学/播放队列/网易云与 Navidrome 客户端/均衡器参数，Windows 与 macOS 双端复用
 - **运行时依赖**：libmpv（`brew install mpv`）。应用启动时依次探测 `/opt/homebrew/lib`（Apple Silicon）→ `/usr/local/lib`（Intel）→ `/usr/lib` 下的 `libmpv.dylib`，未安装则 UI 提示并禁用内置播放
 - **未签名/未公证**：Linux 环境无法签名与 notarization，首次打开需在 macOS 上**右键 → 打开**放行 Gatekeeper
 - v0.5 macOS 版不含壁纸（桌面壁纸需 NSWorkspace 系统接口，后续迭代）
@@ -69,15 +73,15 @@
 
 ```bash
 # 构建（0 警告 0 错误）
-dotnet build src/MediaBarWallpaper.Mac/MediaBarWallpaper.Mac.csproj -c Release
+dotnet build src/DogDesk.Mac/DogDesk.Mac.csproj -c Release
 # 交叉发布（Intel / Apple Silicon）
-dotnet publish src/MediaBarWallpaper.Mac/MediaBarWallpaper.Mac.csproj -c Release -r osx-x64 --self-contained true
-dotnet publish src/MediaBarWallpaper.Mac/MediaBarWallpaper.Mac.csproj -c Release -r osx-arm64 --self-contained true
+dotnet publish src/DogDesk.Mac/DogDesk.Mac.csproj -c Release -r osx-x64 --self-contained true
+dotnet publish src/DogDesk.Mac/DogDesk.Mac.csproj -c Release -r osx-arm64 --self-contained true
 ```
 
 ## 技术要点
 
-- **跨平台共享核心库**：`src/MediaBarWallpaper.Core/`（net8.0，无 WPF/Windows 依赖）：AppSettings、SettingsService、LyricsService、SpectrumAnalyzer（FFT 数学）、PlaybackQueue（纯逻辑播放队列）、NeteaseMusicSource、NavidromeClient（Subsonic）、EqualizerPreset/EqualizerAf（mpv af 链生成）
+- **跨平台共享核心库**：`src/DogDesk.Core/`（net8.0，无 WPF/Windows 依赖）：AppSettings、SettingsService、LyricsService、SpectrumAnalyzer（FFT 数学）、PlaybackQueue（纯逻辑播放队列）、NeteaseMusicSource、NavidromeClient（Subsonic）、EqualizerPreset/EqualizerAf（mpv af 链生成）
 - **内置播放内核**：独立 libmpv context（`vo=null`），事件线程观察 `time-pos/pause/duration/eof-reached`，实现 IMediaSession；与壁纸视频播放器各自独立 context
 - **非侵入式**（壁纸/媒体条/歌词/桌面格子）：不 hook Explorer、不改注册表、不修改系统文件，全部走公开 Win32 API；系统优化模块除外（见上节，用户显式触发）
 - **壁纸宿主**：`Progman` → 发送 `0x052C` → 枚举含 `SHELLDLL_DefView` 的顶层窗口 → 取其父窗口即 WorkerW（Win8+ 经典方案）
@@ -96,15 +100,15 @@ dotnet publish src/MediaBarWallpaper.Mac/MediaBarWallpaper.Mac.csproj -c Release
 - 首次构建会经 NuGet 自动下载 libmpv（约 80MB，含全编解码），需联网
 
 ```powershell
-cd MediaBarWallpaper
-dotnet build src/MediaBarWallpaper/MediaBarWallpaper.csproj -c Release
+cd DogDesk
+dotnet build src/DogDesk/DogDesk.csproj -c Release
 ```
 
 > 代码已在 Linux 通过 `EnableWindowsTargeting` 交叉编译验证（0 警告 0 错误），WPF 程序只能在 Windows 运行。
 
 ## 运行（Windows）
 
-1. 运行 `MediaBarWallpaper.exe`；首次可勾选「设置 → 开机自启 / 最小化到托盘」
+1. 运行 `DogDesk.exe`；首次可勾选「设置 → 开机自启 / 最小化到托盘」
 2. 「壁纸」页：选「内置动画」/「本地图片/视频」→ 调亮度/填充 → 「应用壁纸」
 3. 「频谱」页：勾选「壁纸频谱律动」→ 重新「应用壁纸」→ 放音乐看律动
 4. 「媒体条」页：勾选「显示任务栏媒体条」；系统播放器开「系统媒体控制」显示真实曲目
@@ -127,13 +131,13 @@ dotnet build src/MediaBarWallpaper/MediaBarWallpaper.csproj -c Release
 ## 目录结构
 
 ```
-MediaBarWallpaper/
+DogDesk/
 ├── src/
-│   ├── MediaBarWallpaper.Core/      # 跨平台共享核心库（net8.0，无 WPF 依赖）
+│   ├── DogDesk.Core/      # 跨平台共享核心库（net8.0，无 WPF 依赖）
 │   │   ├── Models/                  # AppSettings / MediaItem
 │   │   └── Services/                # Settings / Lyrics / SpectrumAnalyzer /
 │   │                                # Playback / MusicSource(网易云,Navidrome) / Equalizer
-│   ├── MediaBarWallpaper/           # Windows WPF 版
+│   ├── DogDesk/           # Windows WPF 版
 │   │   ├── App.xaml(.cs)            # 入口 + 单例 + 会话路由接线
 │   │   ├── MainWindow.xaml(.cs)     # 控制面板（10 Tab）
 │   │   ├── Interop/                 # Win32 P/Invoke / 任务栏 / WorkerW
@@ -146,10 +150,10 @@ MediaBarWallpaper/
 │   │   │   └── Mpv/ WallpaperEngine / Lyrics / Spectrum / Tray / AutoStart ...
 │   │   └── Views/                   # 媒体条 / 壁纸 / 频谱 / 歌词 / 全屏歌词动画 /
 │   │                                # DeskBoxOverlay / 粒子 / CoverPalette
-│   └── MediaBarWallpaper.Mac/       # macOS Avalonia 版（net8.0 + Avalonia 11）
+│   └── DogDesk.Mac/       # macOS Avalonia 版（net8.0 + Avalonia 11）
 │       ├── Services/                # MpvLib(dylib 探测) / MpvAudioPlayer / AppServices / 曲库 / 封面
 │       └── Views/                   # MainWindow(5 Tab) / LyricsOverlay / FullscreenLyrics
-├── MediaBarWallpaper.sln
+├── DogDesk.sln
 └── README.md
 ```
 

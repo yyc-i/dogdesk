@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{50DBD0D0-FE17-43C9-B2EC-549521CA5381}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DogDesk", "src\DogDesk\DogDesk.csproj", "{ED9F5A6D-8D49-488F-8E4D-71C1A5B2DA50}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DogDesk.Core", "src\DogDesk.Core\DogDesk.Core.csproj", "{27350C83-5B59-447A-BDF7-07E664015DF4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DogDesk.Mac", "src\DogDesk.Mac\DogDesk.Mac.csproj", "{D7C87738-16BD-4119-A8D8-A55D2561C5C8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{ED9F5A6D-8D49-488F-8E4D-71C1A5B2DA50}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED9F5A6D-8D49-488F-8E4D-71C1A5B2DA50}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED9F5A6D-8D49-488F-8E4D-71C1A5B2DA50}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED9F5A6D-8D49-488F-8E4D-71C1A5B2DA50}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27350C83-5B59-447A-BDF7-07E664015DF4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27350C83-5B59-447A-BDF7-07E664015DF4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27350C83-5B59-447A-BDF7-07E664015DF4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27350C83-5B59-447A-BDF7-07E664015DF4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7C87738-16BD-4119-A8D8-A55D2561C5C8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7C87738-16BD-4119-A8D8-A55D2561C5C8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7C87738-16BD-4119-A8D8-A55D2561C5C8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7C87738-16BD-4119-A8D8-A55D2561C5C8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{ED9F5A6D-8D49-488F-8E4D-71C1A5B2DA50} = {50DBD0D0-FE17-43C9-B2EC-549521CA5381}
+		{27350C83-5B59-447A-BDF7-07E664015DF4} = {50DBD0D0-FE17-43C9-B2EC-549521CA5381}
+		{D7C87738-16BD-4119-A8D8-A55D2561C5C8} = {50DBD0D0-FE17-43C9-B2EC-549521CA5381}
+	EndGlobalSection
+EndGlobal
