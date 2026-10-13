@@ -59,6 +59,13 @@ public partial class BootAnimWindow : Window
         Close();
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        _close.Stop();
+        try { BootImage.Source = null; } catch { }
+        base.OnClosed(e);
+    }
+
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);

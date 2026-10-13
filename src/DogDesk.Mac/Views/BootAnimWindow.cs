@@ -177,4 +177,13 @@ public sealed class BootAnimWindow : Window
         _motion.Start();
         _autoClose.Start();
     }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        // 关闭后停止动画与倒计时定时器，释放渲染资源
+        _motion.Stop();
+        _autoClose.Stop();
+        _particles.Clear();
+        base.OnClosed(e);
+    }
 }

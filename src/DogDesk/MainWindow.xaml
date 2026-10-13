@@ -26,6 +26,16 @@
     <!-- F4 节拍白色闪烁层（覆盖整窗，0.25→0 快速淡出） -->
     <Border x:Name="BeatFlash" Grid.RowSpan="3" Background="#33FFFFFF" Opacity="0" IsHitTestVisible="False"/>
 
+    <!-- 首次使用引导条（可关闭） -->
+    <Border x:Name="GuideBar" Grid.Row="0" Background="#2A2F4A" CornerRadius="8" Padding="12,8"
+            Margin="0,0,0,10" Visibility="Collapsed">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="快速上手：①壁纸页应用壁纸 → ②媒体条/歌词页开启 → ③桌宠/AI伙伴页按需开启。全局热键 Ctrl+Alt+D 显隐主界面、Ctrl+Alt+P 切桌宠。"
+                   Foreground="#C7D0FF" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
+        <Button Content="知道了" Margin="12,0,0,0" Padding="10,2" Click="OnGuideDismissed"/>
+      </StackPanel>
+    </Border>
+
     <!-- ===== 标题 ===== -->
     <StackPanel Margin="0,0,0,14">
       <TextBlock Text="dogdesk 控制台" FontSize="22" FontWeight="Bold"/>

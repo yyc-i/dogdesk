@@ -15,6 +15,8 @@ public sealed class TrayService : IDisposable
     public event Action? ApplyWallpaperRequested;
     public event Action? StopWallpaperRequested;
     public event Action? ExitRequested;
+    public event Action? PetToggleRequested;
+    public event Action? AiToggleRequested;
 
     public TrayService()
     {
@@ -26,6 +28,9 @@ public sealed class TrayService : IDisposable
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
         menu.Items.Add("应用壁纸", null, (_, _) => ApplyWallpaperRequested?.Invoke());
         menu.Items.Add("停止壁纸", null, (_, _) => StopWallpaperRequested?.Invoke());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add("桌宠", null, (_, _) => PetToggleRequested?.Invoke());
+        menu.Items.Add("AI 伙伴", null, (_, _) => AiToggleRequested?.Invoke());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
         menu.Items.Add("退出", null, (_, _) => ExitRequested?.Invoke());
         _icon.ContextMenuStrip = menu;

@@ -36,6 +36,23 @@ public partial class MainWindow
         catch (Exception ex) { PetStatusText.Text = "桌宠异常：" + ex.Message; }
     }
 
+    private void OnGuideDismissed(object sender, RoutedEventArgs e)
+    {
+        GuideBar.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>托盘/热键切换桌宠（即时生效）。</summary>
+    public void TogglePet()
+    {
+        PetEnabledCheck.IsChecked = PetEnabledCheck.IsChecked != true;
+    }
+
+    /// <summary>托盘/热键切换 AI 伙伴开关。</summary>
+    public void ToggleAi()
+    {
+        AiEnabledCheck.IsChecked = AiEnabledCheck.IsChecked != true;
+    }
+
     private void ShowPet()
     {
         ClosePet();
@@ -450,8 +467,9 @@ public partial class MainWindow
     private void AddChat(string who, string text)
     {
         _chat.Add((who, text));
-        if (_chat.Count > 40) _chat.RemoveAt(0);
+        if (_chat.Count > 20) _chat.RemoveAt(0);
         AiChatList.Items.Add($"{who}：{text}");
+        if (AiChatList.Items.Count > 40) AiChatList.Items.RemoveAt(0);
         AiChatList.ScrollIntoView(AiChatList.Items[^1]);
     }
 
@@ -518,7 +536,52 @@ public partial class MainWindow
         catch { }
     }
 
-    // ================= ZenDesktop 视觉效果（实验性） =================
+    // ================= 全局热键（打磨） =================
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+    private const uint MOD_ALT = 0x0001, MOD_CONTROL = 0x0002;
+    private const int HK_MAIN = 0xC0D1, HK_PET = 0xC0D2;
+    private const int WM_HOTKEY = 0x0312;
+
+    private void RegisterHotkeys()
+    {
+        try
+        {
+            var src = System.Windows.Interop.HwndSource.FromHwnd(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+            if (src is null) return;
+            src.AddHook(WndHook);
+            RegisterHotKey(src.Handle, HK_MAIN, MOD_CONTROL | MOD_ALT, 0x44); // D
+            RegisterHotKey(src.Handle, HK_PET, MOD_CONTROL | MOD_ALT, 0x50);  // P
+        }
+        catch { /* 热键注册失败静默 */ }
+    }
+
+    private IntPtr WndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WM_HOTKEY)
+        {
+            int id = wParam.ToInt32();
+            if (id == HK_MAIN)
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (Visibility == Visibility.Visible) { Hide(); Show(); WindowState = WindowState.Normal; Activate(); }
+                    else { Show(); WindowState = WindowState.Normal; Activate(); }
+                });
+                handled = true;
+            }
+            else if (id == HK_PET)
+            {
+                Dispatcher.BeginInvoke(TogglePet);
+                handled = true;
+            }
+        }
+        return IntPtr.Zero;
+    }
 
     private void OnZenApplyClick(object sender, RoutedEventArgs e)
     {

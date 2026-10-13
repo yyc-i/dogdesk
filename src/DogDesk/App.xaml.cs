@@ -72,6 +72,8 @@ public partial class App : System.Windows.Application
         });
         _tray.ApplyWallpaperRequested += () => Dispatcher.BeginInvoke(main.ApplyCurrentSettings);
         _tray.StopWallpaperRequested += () => Dispatcher.BeginInvoke(main.StopWallpaperNow);
+        _tray.PetToggleRequested += () => Dispatcher.BeginInvoke(main.TogglePet);
+        _tray.AiToggleRequested += () => Dispatcher.BeginInvoke(main.ToggleAi);
         _tray.ExitRequested += () => Dispatcher.BeginInvoke(() =>
         {
             main.ForceClose = true;

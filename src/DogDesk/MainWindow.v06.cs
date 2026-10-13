@@ -323,6 +323,8 @@ public partial class MainWindow
             ApplyPanelGlass();
             InitAiTab();
             InitBootTab();
+            RegisterHotkeys();
+            GuideBar.Visibility = Visibility.Visible;
         }
         catch (Exception ex) { Log("[v0.6] 初始化异常：" + ex.Message); }
     }

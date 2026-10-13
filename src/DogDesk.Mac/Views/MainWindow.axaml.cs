@@ -959,8 +959,10 @@ public partial class MainWindow : Window
             SystemPrompt = sys,
             Model = _app.CurrentChatModel(),
         };
-        var reply = await provider.CompleteAsync(req);
-        _chat[pending] = new ChatBubble { IsUser = false, Text = reply?.Text ?? "（无响应或服务未就绪）" };
+        ChatReply? reply = null;
+        try { reply = await provider.CompleteAsync(req); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[AI] {ex.Message}"); }
+        _chat[pending] = new ChatBubble { IsUser = false, Text = reply?.Text ?? "（无响应或服务未就绪，请检查通道/模型）" };
         RefreshAiStatus();
     }
 
