@@ -1,0 +1,22 @@
+<Window x:Class="DogDesk.Views.PetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" ResizeMode="NoResize" WindowStartupLocation="Manual"
+        Topmost="True" Width="120" Height="120">
+  <Canvas x:Name="Root" Background="Transparent" MouseLeftButtonDown="OnDragDown" MouseLeftButtonUp="OnDragUp">
+    <!-- 自绘卡通猫：脸 -->
+    <Ellipse Canvas.Top="30" Width="90" Height="78" Fill="#FFF3E0" Stroke="#8D6E63" StrokeThickness="2"/>
+    <!-- 耳朵 -->
+    <Polygon Points="20,35 35,8 48,32" Fill="#FFF3E0" Stroke="#8D6E63" StrokeThickness="2"/>
+    <Polygon Points="80,35 65,8 52,32" Fill="#FFF3E0" Stroke="#8D6E63" StrokeThickness="2"/>
+    <!-- 眼睛 -->
+    <Ellipse x:Name="EyeL" Canvas.Top="55" Canvas.Left="36" Width="8" Height="10" Fill="#3E2723"/>
+    <Ellipse x:Name="EyeR" Canvas.Top="55" Canvas.Left="70" Width="8" Height="10" Fill="#3E2723"/>
+    <!-- 鼻子/嘴 -->
+    <Ellipse Canvas.Top="76" Canvas.Left="54" Width="8" Height="6" Fill="#FF8A80"/>
+    <!-- 左爪 / 右爪（拍爪动画） -->
+    <Ellipse x:Name="PawL" Canvas.Top="98" Canvas.Left="18" Width="22" Height="18" Fill="#FFCC80" Stroke="#8D6E63" StrokeThickness="1.5"/>
+    <Ellipse x:Name="PawR" Canvas.Top="98" Canvas.Left="80" Width="22" Height="18" Fill="#FFCC80" Stroke="#8D6E63" StrokeThickness="1.5"/>
+  </Canvas>
+</Window>

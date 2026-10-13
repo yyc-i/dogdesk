@@ -116,6 +116,44 @@ public sealed class AppSettings
     /// <summary>城市天气氛围推歌（默认关闭；需位置权限）。</summary>
     public bool WeatherRecommendEnabled { get; set; }
 
+    // ---- v0.7 桌宠 / AI 伙伴 / 开机动画 ----
+    /// <summary>桌宠总开关。</summary>
+    public bool PetEnabled { get; set; }
+    public double PetScale { get; set; } = 1.0;
+
+    /// <summary>AI 伙伴总开关（默认关闭，需用户配置 key 后启用）。</summary>
+    public bool AiEnabled { get; set; }
+    /// <summary>OpenAI 兼容 API BaseUrl（如 https://ark.cn-beijing.volces.com/api/v3 ）。</summary>
+    public string AiBaseUrl { get; set; } = "";
+    /// <summary>用户自备 API Key（明文存本机 settings.json，注意保管）。</summary>
+    public string AiApiKey { get; set; } = "";
+    public string AiModel { get; set; } = "doubao-seed-1.6-lite";
+    /// <summary>角色人设预设名（CharacterPresets）。</summary>
+    public string AiCharacter { get; set; } = "元气少女";
+    /// <summary>自定义 system prompt（非空时优先于预设）。</summary>
+    public string AiSystemPrompt { get; set; } = "";
+    /// <summary>语音合成（系统 TTS）开关。</summary>
+    public bool AiTtsEnabled { get; set; } = true;
+    /// <summary>语音识别（按住说话，系统 STT）开关。</summary>
+    public bool AiSttEnabled { get; set; } = true;
+    /// <summary>LLM 通道：Local（Ollama 本地免费，默认）/ Cloud（OpenAI 兼容 key）。</summary>
+    public string AiChannel { get; set; } = "Local";
+    /// <summary>本地 Ollama 模型名（空=自动选已拉取的第一个）。</summary>
+    public string AiLocalModel { get; set; } = "";
+    /// <summary>工具调用总开关（默认关闭，需用户显式开启）。</summary>
+    public bool AiToolsEnabled { get; set; }
+    /// <summary>天气工具城市（留空则不启用天气工具）。</summary>
+    public string AiCity { get; set; } = "";
+
+    /// <summary>启动动画开关（默认开）。</summary>
+    public bool BootAnimEnabled { get; set; } = true;
+    /// <summary>启动动画样式：Aurora/Particle/FlowText/Image/Video/SolidLogo。</summary>
+    public string BootAnimStyle { get; set; } = "Aurora";
+    /// <summary>图片/视频样式对应的素材路径（素材库路径或用户导入文件）。</summary>
+    public string BootAnimPath { get; set; } = "";
+    /// <summary>启动动画最长显示时长（秒），超时自动关闭。</summary>
+    public double BootAnimDurationSec { get; set; } = 3.5;
+
     // ---- 通用 ----
     public string AccentColor { get; set; } = "#818CF8";          // 主题强调色
     public bool AutoStart { get; set; }                           // 开机自启（启动文件夹快捷方式，非侵入）

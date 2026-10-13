@@ -1,6 +1,8 @@
 using DogDesk.Mac.Services.Mpv;
 using DogDesk.Models;
 using DogDesk.Services;
+using DogDesk.Services.Ai;
+using DogDesk.Services.BootAnim;
 using DogDesk.Services.Effect;
 using DogDesk.Services.Equalizer;
 using DogDesk.Services.MusicSource;
@@ -165,6 +167,45 @@ public sealed class AppServices
     }
 
     private void SavePlaylists() => PlaylistStore.Save(Playlists);
+
+    // ============ AI 伙伴（v0.7） ============
+    /// <summary>按当前设置构建 LLM 客户端；系统提示词优先用自定义，否则取角色预设。</summary>
+    public LlmClient BuildLlmClient()
+    {
+        var s = Settings.Current;
+        string sys = !string.IsNullOrWhiteSpace(s.AiSystemPrompt)
+            ? s.AiSystemPrompt
+            : CharacterPresets.GetPrompt(s.AiCharacter);
+        return new LlmClient
+        {
+            BaseUrl = s.AiBaseUrl,
+            ApiKey = s.AiApiKey,
+            Model = s.AiModel,
+            SystemPrompt = sys,
+        };
+    }
+
+    /// <summary>双通道聊天 provider（v0.7）：Local=Ollama 本地，Cloud=OpenAI 兼容云端。</summary>
+    public IChatProvider BuildChatProvider()
+    {
+        var s = Settings.Current;
+        if (string.Equals(s.AiChannel, "Cloud", StringComparison.OrdinalIgnoreCase))
+            return BuildLlmClient();
+        return new OllamaClient();
+    }
+
+    /// <summary>当前 channel 下对话使用的模型名（云端取 AiModel，本地取 AiLocalModel）。</summary>
+    public string CurrentChatModel()
+    {
+        var s = Settings.Current;
+        return string.Equals(s.AiChannel, "Cloud", StringComparison.OrdinalIgnoreCase)
+            ? s.AiModel
+            : s.AiLocalModel;
+    }
+
+    // ============ 开机动画素材库（v0.7） ============
+    public List<BootAnimEntry> LoadBootAnimLibrary() => BootAnimStore.Load();
+    public void SaveBootAnimLibrary(List<BootAnimEntry> entries) => BootAnimStore.Save(entries);
 
     // ============ 记忆播放 ============
     /// <summary>退出时保存队列与当前位置（若启用且有有效队列）。</summary>

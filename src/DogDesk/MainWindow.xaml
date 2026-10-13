@@ -629,6 +629,19 @@
             </Border>
 
             <!-- 执行日志 -->
+            <Border Background="#3A1414" BorderBrush="#7A2020" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="③ 视觉效果（实验性 · Windhawk/ZenDesktop 封装）" FontSize="14" FontWeight="SemiBold" Foreground="#FCA5A5"/>
+                <TextBlock Text="🔴 高风险：Windhawk mod 修改 Explorer 进程，可能影响稳定性，建议先建还原点。本应用仅封装其官方 CLI 的安装/卸载流程，绝不自动注入，也未复制其任何 mod 代码。"
+                           Foreground="#FCA5A5" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                  <Button x:Name="ZenApplyButton" Style="{StaticResource PanelButton}" Content="一键应用脚本" Click="OnZenApplyClick"/>
+                  <Button x:Name="ZenUninstallButton" Style="{StaticResource PanelButton}" Content="卸载脚本" Margin="8,0,0,0" Click="OnZenUninstallClick"/>
+                  <TextBlock Text="需先在 windhawk.net 安装 Windhawk；脚本会探测其 CLI 并友好报错。" FontSize="11" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource TextSecondary}"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
             <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
                     BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
               <StackPanel>
@@ -636,6 +649,96 @@
                 <TextBox x:Name="OptLogBox" Style="{StaticResource PanelTextBox}" IsReadOnly="True" AcceptsReturn="True"
                          TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Height="180"
                          FontFamily="Cascadia Mono, Consolas, Microsoft YaHei UI" FontSize="11"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 桌宠 ============ -->
+      <TabItem Header="桌宠" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16">
+              <StackPanel>
+                <TextBlock Text="桌宠（BongoCat 风格自研）" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <CheckBox x:Name="PetEnabledCheck" Style="{StaticResource PanelCheckBox}" Content="启用桌宠" Checked="OnPetToggled" Unchecked="OnPetToggled"/>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <TextBlock Text="尺寸缩放" Width="80" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                  <Slider x:Name="PetScaleSlider" Style="{StaticResource PanelSlider}" Minimum="0.5" Maximum="2" Width="280" ValueChanged="OnPetScaleChanged"/>
+                  <TextBlock x:Name="PetScaleValue" Text="1.0" Width="40" VerticalAlignment="Center" FontSize="12" Margin="8,0,0,0" Foreground="{StaticResource TextSecondary}"/>
+                </StackPanel>
+                <TextBlock Text="隐私说明：拍爪输入仅用 GetAsyncKeyState 在本机进程内读取键盘状态，离线运行，不收集、不上传任何数据。"
+                           FontSize="11" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                <TextBlock x:Name="PetStatusText" Text="" FontSize="12" Margin="0,8,0,0" Foreground="{StaticResource TextSecondary}"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ AI 伙伴 ============ -->
+      <TabItem Header="AI 伙伴" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16">
+              <StackPanel>
+                <TextBlock Text="AI 伙伴（OpenAI 兼容 /chat/completions，自建端点）" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <CheckBox x:Name="AiEnabledCheck" Style="{StaticResource PanelCheckBox}" Content="启用 AI 伙伴" Checked="OnAiToggled" Unchecked="OnAiToggled"/>
+                <TextBlock Text="对话内容会发送到你自行配置的第三方 LLM 服务，由你自行负责；本应用不收集不上传额外数据。"
+                           FontSize="11" Foreground="#FBBF24" TextWrapping="Wrap" Margin="0,8,0,10"/>
+                <StackPanel Orientation="Horizontal" Margin="0,2,0,8">
+                  <TextBlock Text="通道" Width="40" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                  <ComboBox x:Name="AiChannelCombo" Style="{StaticResource PanelComboBox}" Width="150" SelectionChanged="OnAiChannelChanged">
+                    <ComboBoxItem Content="本地 Ollama（离线推荐）" Tag="Local"/>
+                    <ComboBoxItem Content="云端 OpenAI 兼容" Tag="Cloud"/>
+                  </ComboBox>
+                  <Button x:Name="OllamaCheckButton" Style="{StaticResource PanelButton}" Content="检测 Ollama" Margin="10,0,0,0" Padding="10,4" Click="OnOllamaCheckClick"/>
+                  <ComboBox x:Name="OllamaModelCombo" Style="{StaticResource PanelComboBox}" Width="160" Margin="10,0,0,0"/>
+                </StackPanel>
+                <CheckBox x:Name="AiToolsCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="启用工具调用（function calling，默认关；对话与工具日志仅本机存储）" Margin="0,0,0,8"/>
+                <TextBox x:Name="AiBaseUrlBox" Style="{StaticResource PanelTextBox}" Margin="0,0,0,6" Tag="Base URL，如 https://ark.cn-beijing.volces.com/api/v3"/>
+                <PasswordBox x:Name="AiApiKeyBox" Margin="0,0,0,6" Tag="API Key" />
+                <TextBox x:Name="AiModelBox" Style="{StaticResource PanelTextBox}" Margin="0,0,0,6" Tag="模型名"/>
+                <ComboBox x:Name="AiCharacterCombo" Style="{StaticResource PanelComboBox}" Width="200" Margin="0,0,0,6" SelectionChanged="OnAiCharacterChanged"/>
+                <CheckBox x:Name="AiTtsCheck" Style="{StaticResource PanelCheckBox}" Content="系统语音朗读回复（System.Speech，离线）" Margin="0,0,0,6"/>
+                <CheckBox x:Name="AiSttCheck" Style="{StaticResource PanelCheckBox}" Content="按住说话识别（System.Speech.Recognition，缺语言包时降级）"/>
+                <ListBox x:Name="AiChatList" Height="220" Margin="0,12,0,6"/>
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBox x:Name="AiInputBox" Style="{StaticResource PanelTextBox}" KeyDown="OnAiInputKeyDown"/>
+                  <Button Grid.Column="1" x:Name="AiSendButton" Style="{StaticResource PanelButton}" Content="发送" Margin="8,0,0,0" Padding="16,6" Click="OnAiSendClick"/>
+                </Grid>
+                <TextBlock x:Name="AiStatusText" Text="" FontSize="12" Margin="0,8,0,0" Foreground="{StaticResource TextSecondary}"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 开机动画 ============ -->
+      <TabItem Header="开机动画" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16">
+              <StackPanel>
+                <TextBlock Text="开机动画" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <CheckBox x:Name="BootAnimEnabledCheck" Style="{StaticResource PanelCheckBox}" Content="启用开机动画（启动时展示，可 Esc/点击跳过）"/>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <TextBlock Text="样式" Width="60" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                  <ComboBox x:Name="BootAnimStyleCombo" Style="{StaticResource PanelComboBox}" Width="160" SelectionChanged="OnBootAnimStyleChanged">
+                    <ComboBoxItem Content="Aurora 极光"/>
+                    <ComboBoxItem Content="Gradient 渐变呼吸"/>
+                    <ComboBoxItem Content="FlowText 流光文字"/>
+                  </ComboBox>
+                  <TextBlock Text="（Particle/Image/Video 为变体，路径在设置页）" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="{StaticResource TextSecondary}"/>
+                </StackPanel>
+                <Button x:Name="BootTestButton" Style="{StaticResource PanelButton}" Content="预览当前开机动画" Margin="0,12,0,0" Click="OnBootTestClick"/>
+                <TextBlock x:Name="BootStatusText" Text="" FontSize="12" Margin="0,8,0,0" Foreground="{StaticResource TextSecondary}"/>
               </StackPanel>
             </Border>
           </StackPanel>

@@ -321,6 +321,8 @@ public partial class MainWindow
             AttachListContextMenus();
             InitBottomSpectrum();
             ApplyPanelGlass();
+            InitAiTab();
+            InitBootTab();
         }
         catch (Exception ex) { Log("[v0.6] 初始化异常：" + ex.Message); }
     }

@@ -1,0 +1,23 @@
+<Window x:Class="DogDesk.Views.BootAnimWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" Background="Black"
+        WindowStartupLocation="CenterScreen" Width="820" Height="520"
+        Topmost="True" Cursor="Hand" MouseLeftButtonDown="Skip">
+  <Grid x:Name="RootGrid">
+    <Grid.Background>
+      <LinearGradientBrush x:Name="AuroraBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#1a1a2e" Offset="0"/>
+        <GradientStop Color="#16213e" Offset="0.5"/>
+        <GradientStop Color="#0f3460" Offset="1"/>
+      </LinearGradientBrush>
+    </Grid.Background>
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+      <Image x:Name="BootImage" Width="240" Height="240" Stretch="Uniform" Margin="0,0,0,16" Visibility="Collapsed"/>
+      <TextBlock x:Name="LogoText" Text="dogdesk" FontSize="64" FontWeight="Bold"
+                 Foreground="#E0E0E0" HorizontalAlignment="Center"/>
+      <TextBlock Text="桌面美化 · 正在启动…" FontSize="16" Foreground="#9aa"
+                 HorizontalAlignment="Center" Margin="0,16,0,0"/>
+    </StackPanel>
+  </Grid>
+</Window>

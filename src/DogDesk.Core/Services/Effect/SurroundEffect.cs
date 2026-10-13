@@ -44,7 +44,7 @@ public sealed class EffectPreset
 
     public void Export(string path)
     {
-        string dir = System.IO.Path.GetDirectoryName(path);
+        string? dir = System.IO.Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(dir)) System.IO.Directory.CreateDirectory(dir);
         System.IO.File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(this, JsonOpt));
     }

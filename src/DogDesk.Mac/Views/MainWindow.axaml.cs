@@ -11,6 +11,8 @@ using Avalonia.Threading;
 using DogDesk.Mac.Services;
 using DogDesk.Mac.Views;
 using DogDesk.Models;
+using DogDesk.Services.Ai;
+using DogDesk.Services.BootAnim;
 using DogDesk.Services.Effect;
 using DogDesk.Services.Equalizer;
 using DogDesk.Services.MusicSource;
@@ -31,6 +33,8 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<MediaItem> _nav = new();
     private readonly ObservableCollection<DogDeskPlaylist> _playlists = new();
     private readonly ObservableCollection<MediaItem> _playlistItems = new();
+    private readonly ObservableCollection<ChatBubble> _chat = new();
+    private readonly ObservableCollection<BootAnimEntry> _bootLib = new();
 
     private readonly DispatcherTimer _uiTimer;
     private readonly LyricsOverlayWindow _lyricsWindow;
@@ -52,6 +56,12 @@ public partial class MainWindow : Window
         NavList.ItemsSource = _nav;
         PlaylistList.ItemsSource = _playlists;
         PlaylistItemsList.ItemsSource = _playlistItems;
+        AiChatList.ItemsSource = _chat;
+        BootAnimLibraryList.ItemsSource = _bootLib;
+
+        // AI 角色预设下拉
+        foreach (var (name, _) in CharacterPresets.All)
+            AiCharacterBox.Items.Add(name);
 
         BuildRadioAndChartButtons();
         BuildEqualizerSliders();
@@ -414,6 +424,32 @@ public partial class MainWindow : Window
         GlassSwitch.IsChecked = s.GlassEffectEnabled;
         ResumeSwitch.IsChecked = s.ResumePlayback;
         PanelOpacitySlider.Value = Math.Clamp(s.MainPanelOpacity, 0.3, 1);
+
+        // v0.7 AI 伙伴
+        AiEnabledSwitch.IsChecked = s.AiEnabled;
+        AiChannelBox.SelectedIndex = string.Equals(s.AiChannel, "Cloud", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        if (!string.IsNullOrWhiteSpace(s.AiLocalModel))
+        {
+            AiLocalModelBox.Items.Clear();
+            AiLocalModelBox.Items.Add(s.AiLocalModel);
+            AiLocalModelBox.SelectedItem = s.AiLocalModel;
+        }
+        AiBaseUrlBox.Text = s.AiBaseUrl;
+        AiApiKeyBox.Text = s.AiApiKey;
+        AiModelBox.Text = s.AiModel;
+        AiCharacterBox.SelectedItem = s.AiCharacter;
+        AiSystemPromptBox.Text = s.AiSystemPrompt;
+        RefreshAiStatus();
+
+        // v0.7 开机动画
+        BootAnimEnabledSwitch.IsChecked = s.BootAnimEnabled;
+        string[] styles = { "Aurora", "Particle", "FlowText", "Image" };
+        int styleIdx = Array.IndexOf(styles, s.BootAnimStyle);
+        BootAnimStyleBox.SelectedIndex = styleIdx < 0 ? 0 : styleIdx;
+        BootAnimDurationSlider.Value = Math.Clamp(s.BootAnimDurationSec, 1, 10);
+        BootAnimDurationLabel.Text = $"{s.BootAnimDurationSec:0.0}s";
+        BootAnimPathBox.Text = s.BootAnimPath;
+        RefreshBootAnimLibrary();
 
         for (int i = 0; i < EqualizerPreset.BandCount; i++)
             _eqSliders[i].Value = EqualizerPreset.From(s.EqualizerGains).GetBand(i);
@@ -796,6 +832,219 @@ public partial class MainWindow : Window
         return result;
     }
 
+    // ============ AI 伙伴（v0.7） ============
+    private bool _aiPrivacyAccepted;
+
+    private async void AiEnabled_Toggled(object? sender, RoutedEventArgs e)
+    {
+        if (AiEnabledSwitch.IsChecked == true && !_aiPrivacyAccepted)
+        {
+            bool ok = await AskConfirmAsync("隐私提示",
+                "启用后，你发送的对话内容将发送到你自行配置的第三方 LLM 服务。\n请确保你已了解并同意由你自行承担数据责任。");
+            if (!ok) { AiEnabledSwitch.IsChecked = false; return; }
+            _aiPrivacyAccepted = true;
+        }
+        _app.Settings.Current.AiEnabled = AiEnabledSwitch.IsChecked == true;
+        _app.Settings.Save();
+        RefreshAiStatus();
+    }
+
+    private void AiCharacter_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressEvents || AiCharacterBox.SelectedItem is not string name) return;
+        _app.Settings.Current.AiCharacter = name;
+        _app.Settings.Save();
+        RefreshAiStatus();
+    }
+
+    private void AiConfig_LostFocus(object? sender, EventArgs e) => SaveAiConfig();
+
+    private void SaveAiConfig()
+    {
+        if (_suppressEvents) return;
+        _app.Settings.Current.AiBaseUrl = AiBaseUrlBox.Text ?? "";
+        _app.Settings.Current.AiApiKey = AiApiKeyBox.Text ?? "";
+        _app.Settings.Current.AiModel = AiModelBox.Text ?? "";
+        _app.Settings.Current.AiSystemPrompt = AiSystemPromptBox.Text ?? "";
+        _app.Settings.Save();
+        RefreshAiStatus();
+    }
+
+    private void RefreshAiStatus()
+    {
+        var s = _app.Settings.Current;
+        bool on = s.AiEnabled;
+        bool cloud = string.Equals(s.AiChannel, "Cloud", StringComparison.OrdinalIgnoreCase);
+        var client = _app.BuildChatProvider();
+        bool ready = client.IsConfigured &&
+                     (!cloud || !string.IsNullOrWhiteSpace(s.AiModel));
+        AiStatusLabel.Text = on
+            ? (ready ? "已启用，可对话" : (cloud ? "云端：请配置 BaseUrl/Key/Model" : "本地 Ollama 未运行？请 brew install ollama && ollama serve"))
+            : "未启用";
+        AiSendBtn.IsEnabled = on && ready;
+    }
+
+    private void AiChannel_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressEvents || AiChannelBox.SelectedIndex < 0) return;
+        _app.Settings.Current.AiChannel = AiChannelBox.SelectedIndex == 1 ? "Cloud" : "Local";
+        _app.Settings.Save();
+        RefreshAiStatus();
+    }
+
+    private void AiLocalModel_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressEvents || AiLocalModelBox.SelectedItem is not string m) return;
+        _app.Settings.Current.AiLocalModel = m;
+        _app.Settings.Save();
+    }
+
+    private async void AiRefreshModels_Click(object? sender, RoutedEventArgs e)
+    {
+        AiStatusLabel.Text = "正在检测本地 Ollama…";
+        try
+        {
+            var ollama = new OllamaClient();
+            bool ok = await ollama.CheckAsync();
+            if (!ok)
+            {
+                AiStatusLabel.Text = "未检测到 Ollama。请先：brew install ollama && ollama serve，然后 ollama pull qwen2.5:7b";
+                return;
+            }
+            var models = await ollama.ListModelsAsync();
+            _suppressEvents = true;
+            AiLocalModelBox.Items.Clear();
+            foreach (var m in models) AiLocalModelBox.Items.Add(m);
+            _suppressEvents = false;
+            AiStatusLabel.Text = models.Count > 0 ? $"本地模型 {models.Count} 个" : "本地暂无已拉取模型";
+        }
+        catch
+        {
+            AiStatusLabel.Text = "未检测到 Ollama。请先：brew install ollama && ollama serve";
+        }
+    }
+
+    private async void AiSend_Click(object? sender, RoutedEventArgs e) => await SendAiMessage();
+
+    private async void AiInput_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            e.Handled = true;
+            await SendAiMessage();
+        }
+    }
+
+    private async Task SendAiMessage()
+    {
+        string text = (AiInputBox.Text ?? "").Trim();
+        if (string.IsNullOrEmpty(text)) return;
+        SaveAiConfig();
+        if (!AiSendBtn.IsEnabled) return;
+
+        _chat.Add(new ChatBubble { IsUser = true, Text = text });
+        AiInputBox.Text = "";
+        AiSendBtn.IsEnabled = false;
+        _chat.Add(new ChatBubble { IsUser = false, Text = "…" });
+        int pending = _chat.Count - 1;
+
+        var provider = _app.BuildChatProvider();
+        var s = _app.Settings.Current;
+        string sys = !string.IsNullOrWhiteSpace(s.AiSystemPrompt)
+            ? s.AiSystemPrompt
+            : CharacterPresets.GetPrompt(s.AiCharacter);
+        var req = new ChatRequest
+        {
+            UserMessage = text,
+            SystemPrompt = sys,
+            Model = _app.CurrentChatModel(),
+        };
+        var reply = await provider.CompleteAsync(req);
+        _chat[pending] = new ChatBubble { IsUser = false, Text = reply?.Text ?? "（无响应或服务未就绪）" };
+        RefreshAiStatus();
+    }
+
+    // ============ 开机动画（v0.7） ============
+    private void BootAnimEnabled_Toggled(object? sender, RoutedEventArgs e)
+    {
+        _app.Settings.Current.BootAnimEnabled = BootAnimEnabledSwitch.IsChecked == true;
+        _app.Settings.Save();
+    }
+
+    private void BootAnimStyle_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressEvents || BootAnimStyleBox.SelectedIndex < 0) return;
+        string[] styles = { "Aurora", "Particle", "FlowText", "Image" };
+        _app.Settings.Current.BootAnimStyle = styles[BootAnimStyleBox.SelectedIndex];
+        _app.Settings.Save();
+    }
+
+    private void BootAnimDuration_ValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (_suppressEvents) return;
+        _app.Settings.Current.BootAnimDurationSec = Math.Round(e.NewValue, 1);
+        _app.Settings.Save();
+        BootAnimDurationLabel.Text = $"{e.NewValue:0.0}s";
+    }
+
+    private async void BootAnimBrowse_Click(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "选择开机动画图片",
+            AllowMultiple = false,
+        });
+        if (files.Count == 0) return;
+        string path = files[0].Path.LocalPath;
+        BootAnimPathBox.Text = path;
+        _app.Settings.Current.BootAnimPath = path;
+        _app.Settings.Save();
+    }
+
+    private void BootAnimDelete_Click(object? sender, RoutedEventArgs e)
+    {
+        if (BootAnimLibraryList.SelectedItem is BootAnimEntry entry)
+        {
+            _bootLib.Remove(entry);
+            _app.SaveBootAnimLibrary(_bootLib.ToList());
+        }
+    }
+
+    private void RefreshBootAnimLibrary()
+    {
+        _bootLib.Clear();
+        foreach (var e in _app.LoadBootAnimLibrary()) _bootLib.Add(e);
+    }
+
+    // ============ 简易确认对话框 ============
+    private async Task<bool> AskConfirmAsync(string title, string message)
+    {
+        var box = new Window
+        {
+            Title = title, Width = 420, Height = 200,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+        bool result = false;
+        var ok = new Button { Content = "同意并启用", HorizontalAlignment = HAlign.Right, Margin = new Thickness(12) };
+        ok.Click += (_, _) => { result = true; box.Close(); };
+        var cancel = new Button { Content = "取消", Margin = new Thickness(12) };
+        cancel.Click += (_, _) => { result = false; box.Close(); };
+        box.Content = new StackPanel
+        {
+            Children =
+            {
+                new TextBlock { Text = message, Margin = new Thickness(12), TextWrapping = TextWrapping.Wrap },
+                new StackPanel
+                {
+                    Orientation = Orient.Horizontal, HorizontalAlignment = HAlign.Right,
+                    Children = { cancel, ok },
+                },
+            },
+        };
+        await box.ShowDialog(this);
+        return result;
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _uiTimer.Stop();
@@ -803,4 +1052,12 @@ public partial class MainWindow : Window
         _fsLyricsWindow?.Close();
         base.OnClosed(e);
     }
+}
+
+/// <summary>AI 对话气泡。</summary>
+public sealed class ChatBubble
+{
+    public bool IsUser { get; set; }
+    public string Text { get; set; } = "";
+    public override string ToString() => (IsUser ? "我：" : "AI：") + Text;
 }

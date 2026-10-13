@@ -81,6 +81,9 @@ public partial class App : System.Windows.Application
 
         main.Show();
 
+        // v0.7：开机动画（非模态，超时/跳过自关闭；BootAnimEnabled=false 时不创建）
+        main.ShowBootAnimIfEnabled();
+
         // 后台接入真实系统媒体会话（SMTC 不可用时保持演示数据，不阻塞启动）
         _ = SystemMedia.InitializeAsync();
 

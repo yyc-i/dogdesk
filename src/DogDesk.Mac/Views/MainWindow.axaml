@@ -177,10 +177,85 @@
       </Grid>
     </TabItem>
 
+    <!-- ============ AI 伙伴（v0.7） ============ -->
+    <TabItem Header="AI 伙伴">
+      <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+        <Border Grid.Row="0" Background="#20243a" CornerRadius="8" Padding="10,8">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <ToggleSwitch x:Name="AiEnabledSwitch" Content="启用 AI 伙伴" Click="AiEnabled_Toggled"/>
+              <TextBlock Text="通道" VerticalAlignment="Center" Margin="12,0,0,0"/>
+              <ComboBox x:Name="AiChannelBox" Width="160" SelectionChanged="AiChannel_SelectionChanged">
+                <ComboBoxItem Content="本地 Ollama"/>
+                <ComboBoxItem Content="云端 OpenAI 兼容"/>
+              </ComboBox>
+              <TextBlock Text="本地模型" VerticalAlignment="Center"/>
+              <ComboBox x:Name="AiLocalModelBox" Width="200" SelectionChanged="AiLocalModel_SelectionChanged"/>
+              <Button Content="刷新模型列表" Click="AiRefreshModels_Click"/>
+              <TextBlock x:Name="AiStatusLabel" Opacity="0.7" VerticalAlignment="Center" Text="未启用"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="BaseUrl" VerticalAlignment="Center" Width="56"/>
+              <TextBox x:Name="AiBaseUrlBox" Width="280" Watermark="https://ark.cn-beijing.volces.com/api/v3"/>
+              <TextBlock Text="ApiKey" VerticalAlignment="Center" Width="50"/>
+              <TextBox x:Name="AiApiKeyBox" Width="180" Watermark="Bearer Key"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="Model" VerticalAlignment="Center" Width="56"/>
+              <TextBox x:Name="AiModelBox" Width="220" Watermark="doubao-seed-1.6-lite"/>
+              <TextBlock Text="角色" VerticalAlignment="Center" Width="50"/>
+              <ComboBox x:Name="AiCharacterBox" Width="140" SelectionChanged="AiCharacter_SelectionChanged"/>
+            </StackPanel>
+            <TextBox x:Name="AiSystemPromptBox" Watermark="自定义人设（留空则用上方角色预设）"
+                     AcceptsReturn="True" Height="56" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+
+        <ListBox x:Name="AiChatList" Grid.Row="1"/>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+          <TextBox x:Name="AiInputBox" Watermark="和 AI 伙伴说点什么…（回车发送）"
+                   AcceptsReturn="True" Height="40"
+                   KeyDown="AiInput_KeyDown"/>
+          <Button x:Name="AiSendBtn" Content="发送" Click="AiSend_Click" MinWidth="80"/>
+        </StackPanel>
+      </Grid>
+    </TabItem>
+
     <!-- ============ 设置 ============ -->
     <TabItem Header="设置">
       <ScrollViewer>
         <StackPanel Spacing="12" Margin="6">
+          <!-- v0.7 开机动画 -->
+          <Border Background="#222430" CornerRadius="8" Padding="12">
+            <StackPanel Spacing="8">
+              <TextBlock FontSize="15" FontWeight="SemiBold" Text="开机动画（v0.7）"/>
+              <ToggleSwitch x:Name="BootAnimEnabledSwitch" Content="启用开机动画" Click="BootAnimEnabled_Toggled"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="样式" VerticalAlignment="Center" Width="40"/>
+                <ComboBox x:Name="BootAnimStyleBox" Width="160" SelectionChanged="BootAnimStyle_SelectionChanged">
+                  <ComboBoxItem Content="Aurora 极光"/>
+                  <ComboBoxItem Content="Particle 粒子"/>
+                  <ComboBoxItem Content="FlowText 流光文字"/>
+                  <ComboBoxItem Content="Image 自定义图片"/>
+                </ComboBox>
+                <TextBlock Text="时长" VerticalAlignment="Center" Width="40"/>
+                <Slider x:Name="BootAnimDurationSlider" Minimum="1" Maximum="10" Width="160"
+                        ValueChanged="BootAnimDuration_ValueChanged"/>
+                <TextBlock x:Name="BootAnimDurationLabel" Width="50" VerticalAlignment="Center" Text="3.5s"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="图片" VerticalAlignment="Center" Width="40"/>
+                <TextBox x:Name="BootAnimPathBox" Width="360" Watermark="Image 样式时使用的图片路径"/>
+                <Button Content="浏览…" Click="BootAnimBrowse_Click"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <ListBox x:Name="BootAnimLibraryList" Width="360" Height="80"/>
+                <Button Content="删除所选" Click="BootAnimDelete_Click" VerticalAlignment="Top"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
           <Border Background="#222430" CornerRadius="8" Padding="12">
             <StackPanel Spacing="8">
               <TextBlock FontSize="15" FontWeight="SemiBold" Text="桌面歌词（置顶半透明）"/>
