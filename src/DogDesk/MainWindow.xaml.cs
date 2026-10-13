@@ -147,11 +147,34 @@ public partial class MainWindow : Window
         SlideshowCheck.IsChecked = _settings.SlideshowEnabled;
         SlideshowIntervalSlider.Value = _settings.SlideshowIntervalSec;
 
+        // v0.8.0 壁纸升级
+        SelectComboByTag(ParticlePresetCombo, _settings.ParticlePreset);
+        WallpaperMouseCheck.IsChecked = _settings.WallpaperMouseInteraction;
+        WallpaperLoopCheck.IsChecked = _settings.WallpaperLoop;
+        HtmlWallpaperCheck.IsChecked = _settings.HtmlWallpaperEnabled;
+        HtmlPathBox.IsEnabled = _settings.HtmlWallpaperEnabled;
+        HtmlPathBox.Text = _settings.HtmlWallpaperPath;
+        int vpc = _settings.VideoPlaylist?.Count ?? 0;
+        VideoPlaylistText.Text = vpc > 0 ? $"已载入 {vpc} 个视频入轮播" : "未设置";
+
+        // v0.8.0 桌宠升级
+        PetKeySoundCheck.IsChecked = _settings.PetKeySound;
+
         MediaBarCheck.IsChecked = _settings.MediaBarEnabled;
         DockCombo.SelectedIndex = _settings.MediaBarDock;
         WidthSlider.Value = _settings.MediaBarWidth;
         AutoHideCheck.IsChecked = _settings.MediaBarAutoHide;
         GradientCheck.IsChecked = _settings.MediaBarCoverGradient;
+        MediaBarEmbedCheck.IsChecked = _settings.MediaBarEmbed;
+        MediaBarOsdCheck.IsChecked = _settings.MediaBarOsd;
+        MediaBarLyricCheck.IsChecked = _settings.LyricsDualLine;
+        MediaBarMaterialCombo.SelectedIndex = _settings.MediaBarMaterial switch
+        {
+            "Transparent" => 1,
+            "Custom" => 2,
+            _ => 0,
+        };
+        MediaBarCustomColorBox.Text = _settings.MediaBarCustomColor;
 
         LyricsCheck.IsChecked = _settings.LyricsEnabled;
         FontSlider.Value = _settings.LyricsFontSize;
@@ -208,11 +231,28 @@ public partial class MainWindow : Window
         _settings.SlideshowEnabled = SlideshowCheck.IsChecked == true;
         _settings.SlideshowIntervalSec = SlideshowIntervalSlider.Value;
 
+        // v0.8.0 壁纸升级
+        _settings.ParticlePreset = SelectedTag(ParticlePresetCombo) ?? "Starfield";
+        _settings.WallpaperMouseInteraction = WallpaperMouseCheck.IsChecked == true;
+        _settings.WallpaperLoop = WallpaperLoopCheck.IsChecked == true;
+        _settings.HtmlWallpaperEnabled = HtmlWallpaperCheck.IsChecked == true;
+        _settings.HtmlWallpaperPath = HtmlPathBox.Text?.Trim() ?? "";
+
         _settings.MediaBarEnabled = MediaBarCheck.IsChecked == true;
         _settings.MediaBarDock = Math.Clamp(DockCombo.SelectedIndex, 0, 2);
         _settings.MediaBarWidth = WidthSlider.Value;
         _settings.MediaBarAutoHide = AutoHideCheck.IsChecked == true;
         _settings.MediaBarCoverGradient = GradientCheck.IsChecked == true;
+        _settings.MediaBarEmbed = MediaBarEmbedCheck.IsChecked == true;
+        _settings.MediaBarOsd = MediaBarOsdCheck.IsChecked == true;
+        _settings.LyricsDualLine = MediaBarLyricCheck.IsChecked == true;
+        _settings.MediaBarMaterial = MediaBarMaterialCombo.SelectedIndex switch
+        {
+            1 => "Transparent",
+            2 => "Custom",
+            _ => "Acrylic",
+        };
+        _settings.MediaBarCustomColor = MediaBarCustomColorBox.Text?.Trim() ?? "#14161F";
 
         _settings.LyricsEnabled = LyricsCheck.IsChecked == true;
         _settings.LyricsFontSize = FontSlider.Value;
@@ -231,7 +271,7 @@ public partial class MainWindow : Window
         _settings.NavidromePassword = NaviPassBox.Text ?? "";
 
         _settings.SpectrumEnabled = SpectrumCheck.IsChecked == true;
-        _settings.SpectrumStyle = (SpectrumStyle)Math.Clamp(SpectrumStyleCombo.SelectedIndex, 0, 2);
+        _settings.SpectrumStyle = (SpectrumStyle)Math.Clamp(SpectrumStyleCombo.SelectedIndex, 0, 3);
         _settings.SpectrumSensitivity = SensitivitySlider.Value;
         _settings.SpectrumSmoothing = SmoothingSlider.Value;
 
@@ -258,6 +298,7 @@ public partial class MainWindow : Window
     {
         UpdateSliderLabels();
         SaveSettingsFromUi();
+        HtmlPathBox.IsEnabled = HtmlWallpaperCheck.IsChecked == true;
         ApplyLiveSettings();
     }
 
@@ -377,10 +418,11 @@ public partial class MainWindow : Window
         SaveSettingsFromUi();
         if (MediaBarCheck.IsChecked == true)
         {
-            _mediaBar ??= new MediaBarWindow(_session, _settings);
+            _mediaBar ??= new MediaBarWindow(_session, _settings, _spectrum);
             _mediaBar.Dock = (TaskbarService.DockPosition)_settings.MediaBarDock;
             _mediaBar.Width = _settings.MediaBarWidth;
             _mediaBar.Show();
+            if (_settings.MediaBarEmbed) _mediaBar.SetEmbed(true);
             Log("[媒体条] 已显示");
         }
         else
@@ -389,6 +431,13 @@ public partial class MainWindow : Window
             _mediaBar = null;   // 懒创建：关闭即清引用（B8）
             Log("[媒体条] 已隐藏");
         }
+    }
+
+    private void OnEmbedToggled(object sender, RoutedEventArgs e)
+    {
+        SaveSettingsFromUi();
+        try { _mediaBar?.SetEmbed(_settings.MediaBarEmbed); } catch { }
+        Log("[媒体条] 嵌入模式：" + (_settings.MediaBarEmbed ? "任务栏内" : "悬浮"));
     }
 
     private void OnDockChanged(object sender, SelectionChangedEventArgs e)
@@ -409,6 +458,9 @@ public partial class MainWindow : Window
         if (LyricsCheck.IsChecked == true)
         {
             _lyricsWindow ??= new LyricsWindow(_session, _lyrics, _settings);
+            // 桌面歌词行推进 → 实时推送媒体条双行歌词；无歌词/未播放时 UpdateLyric("","") 回退封面+标题
+            _lyricsWindow.LineChanged -= OnLyricLineChanged;
+            _lyricsWindow.LineChanged += OnLyricLineChanged;
             _lyricsWindow.ApplyStyleSettings();
             _lyricsWindow.Start();
             Log("[歌词] 桌面歌词已显示");
@@ -419,6 +471,12 @@ public partial class MainWindow : Window
             _lyricsWindow = null;   // 懒创建：关闭即清引用（B8）
             Log("[歌词] 桌面歌词已隐藏");
         }
+    }
+
+    /// <summary>桌面歌词行推进 → 实时推送媒体条双行歌词（内部按 LyricsDualLine 勾选决定是否显示）。</summary>
+    private void OnLyricLineChanged(string current, string next)
+    {
+        try { _mediaBar?.UpdateLyric(current ?? "", next ?? ""); } catch { }
     }
 
     private void OnFullscreenLyricsToggled(object sender, RoutedEventArgs e)

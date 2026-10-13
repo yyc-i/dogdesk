@@ -38,6 +38,12 @@ public partial class MpvWallpaperWindow : Window
 
     public void SetPaused(bool paused) => _player?.SetPaused(paused);
 
+    /// <summary>视频轮播：加载列表中的下一个/上一个文件（已初始化后调用）。</summary>
+    public void LoadFile(string path)
+    {
+        try { _player?.LoadFile(path); } catch { }
+    }
+
     private void OnClosed(object? sender, EventArgs e)
     {
         _player?.Dispose();

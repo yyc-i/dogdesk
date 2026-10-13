@@ -3,7 +3,7 @@ using DogDesk.Models;
 using DogDesk.Services;
 using DogDesk.Services.Ai;
 using DogDesk.Services.BootAnim;
-using DogDesk.Services.Download;
+using DogDesk.Services.Downloads;
 using DogDesk.Services.Effect;
 using DogDesk.Services.Equalizer;
 using DogDesk.Services.MusicSource;
@@ -61,8 +61,14 @@ public sealed class AppServices
         Playlists = PlaylistStore.EnsureFavorites(PlaylistStore.Load());
         Radio = new RadioService(Netease);
 
-        // v0.8 下载管理（aria2 内核，初始化由 UI 在打开主窗口后异步触发）
-        Downloads = new DownloadManager(Settings);
+        // v0.8 下载管理（aria2 内核）
+        Downloads = new DownloadManager(DownloadManager.FindAria2())
+        {
+            MaxConcurrent = Math.Max(1, Settings.Current.DownloadMaxConcurrent),
+            MaxSpeedKb = Settings.Current.DownloadMaxSpeedKib,
+        };
+        try { Downloads.Load(); } catch { }
+        Downloads.TaskChanged += _ => StateChanged?.Invoke();
 
         ApplyAudioChain();
         ApplySpeed();
@@ -286,7 +292,7 @@ public sealed class AppServices
     public void SaveOnExit()
     {
         // v0.8 下载内核退出（幂等，异常安全：不影响记忆播放保存）
-        try { Downloads.Shutdown(); } catch { }
+        try { Downloads.Dispose(); } catch { }
 
         if (!Settings.Current.ResumePlayback || Queue.Current is null) return;
         try
@@ -300,6 +306,9 @@ public sealed class AppServices
             ResumeStore.Save(data);
         }
         catch { }
+
+        // v0.8 下载任务持久化
+        try { Downloads.Save(); } catch { }
     }
 
     /// <summary>启动时恢复队列与位置；失败静默。返回是否恢复了有效队列。</summary>
@@ -393,5 +402,9 @@ public sealed class AppServices
         return -1;
     }
 
-    public void Dispose() => Player.Dispose();
+    public void Dispose()
+    {
+        Player.Dispose();
+        try { Downloads.Dispose(); } catch { }
+    }
 }

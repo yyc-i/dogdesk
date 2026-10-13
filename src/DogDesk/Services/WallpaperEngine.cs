@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -11,6 +12,7 @@ using DogDesk.Interop;
 using DogDesk.Models;
 using DogDesk.Services.Mpv;
 using DogDesk.Views;
+using Microsoft.Web.WebView2.Wpf;
 using Path = System.IO.Path;
 
 namespace DogDesk.Services;
@@ -32,8 +34,21 @@ public sealed class WallpaperEngine : IDisposable
         public SpectrumBarsControl? InlineBars;  // WPF 源同窗口频谱
         public Image? ImageHost;                 // 图片内容（轮播更新）
         public MediaElement? FallbackVideo;      // 回退视频
+        public ParticleFieldControl? Particles;  // 粒子/场景预设控件（降帧/暂停用）
+        public WebView2? HtmlView;               // HTML 壁纸
         public Rect Bounds;                      // 屏幕矩形（物理像素）
     }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+    private const uint GW_OWNER = 4;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int Left, Top, Right, Bottom; }
 
     private readonly List<WallpaperInstance> _instances = new();
     private AppSettings? _settings;
@@ -42,6 +57,12 @@ public sealed class WallpaperEngine : IDisposable
     private DispatcherTimer? _slideshowTimer;
     private string[] _slideFiles = Array.Empty<string>();
     private int _slideIndex;
+
+    // v0.8.0：视频轮播 / 全屏降载
+    private List<string> _videoPlaylist = new();
+    private int _videoIndex;
+    private DispatcherTimer? _fsTimer;
+    private bool _pausedByFullscreen;
 
     public event Action<string>? Log;
     public bool IsRunning => _instances.Count > 0;
@@ -73,13 +94,138 @@ public sealed class WallpaperEngine : IDisposable
             return false;
         }
 
+        // 先解析视频轮播列表，再逐屏创建实例（mpv 窗口启动时即取当前视频）
+        StartVideoPlaylistIfNeeded();
+
         foreach (Rect bounds in screens)
             CreateInstance(bounds);
 
         StartSlideshowIfNeeded();
+        StartFullscreenWatcherIfNeeded();
 
         Log?.Invoke($"[壁纸] 已启动 {_instances.Count} 个显示器实例（{DescribeSource()}）");
         return true;
+    }
+
+    // ---- 视频轮播列表 ----
+
+    /// <summary>解析有效视频列表：优先多视频轮播，否则回退单个 WallpaperPath。</summary>
+    private List<string> ResolveVideoList()
+    {
+        var list = new List<string>();
+        if (_settings!.VideoPlaylist is not null)
+            foreach (var p in _settings.VideoPlaylist)
+                if (TryResolveFile(p, out string full)) list.Add(full);
+        if (list.Count == 0 && TryResolveFile(_settings.WallpaperPath, out string single))
+            list.Add(single);
+        return list;
+    }
+
+    private string? CurrentVideoFile =>
+        _videoIndex >= 0 && _videoIndex < _videoPlaylist.Count ? _videoPlaylist[_videoIndex] : null;
+
+    private void StartVideoPlaylistIfNeeded()
+    {
+        _videoPlaylist = ResolveVideoList();
+        _videoIndex = _videoPlaylist.Count > 0 ? 0 : -1;
+    }
+
+    /// <summary>运行时切换到指定视频文件（mpv 实例重新加载）。</summary>
+    private void PlayVideo(string file)
+    {
+        foreach (var inst in _instances)
+        {
+            if (inst.Win is MpvWallpaperWindow mpv)
+                mpv.LoadFile(file);
+            else if (inst.FallbackVideo is not null)
+                try { inst.FallbackVideo.Source = new Uri(file); inst.FallbackVideo.Play(); } catch { }
+        }
+    }
+
+    /// <summary>下一个视频（壁纸 Tab「下一」按钮调用）。</summary>
+    public void NextVideo()
+    {
+        if (_videoPlaylist.Count == 0) return;
+        _videoIndex = (_videoIndex + 1) % _videoPlaylist.Count;
+        PlayVideo(_videoPlaylist[_videoIndex]);
+        Log?.Invoke($"[壁纸] 切换到下一个视频（{_videoIndex + 1}/{_videoPlaylist.Count}）");
+    }
+
+    /// <summary>上一个视频。</summary>
+    public void PrevVideo()
+    {
+        if (_videoPlaylist.Count == 0) return;
+        _videoIndex = (_videoIndex - 1 + _videoPlaylist.Count) % _videoPlaylist.Count;
+        PlayVideo(_videoPlaylist[_videoIndex]);
+        Log?.Invoke($"[壁纸] 切换到上一个视频（{_videoIndex + 1}/{_videoPlaylist.Count}）");
+    }
+
+    /// <summary>暂停/恢复视频（壁纸 Tab「暂停」按钮）。</summary>
+    public void ToggleVideoPause() => SetVideoPaused(!_videoManuallyPaused);
+
+    private bool _videoManuallyPaused;
+
+    private void SetVideoPaused(bool paused)
+    {
+        _videoManuallyPaused = paused;
+        ApplyVideoPauseState();
+    }
+
+    private void ApplyVideoPauseState()
+    {
+        bool paused = _videoManuallyPaused || _pausedByFullscreen;
+        foreach (var inst in _instances)
+        {
+            if (inst.Win is MpvWallpaperWindow mpv)
+                mpv.SetPaused(paused);
+            else if (inst.FallbackVideo is not null)
+                try { if (paused) inst.FallbackVideo.Pause(); else inst.FallbackVideo.Play(); } catch { }
+        }
+    }
+
+    // ---- 全屏检测：前台全屏视频/游戏时自动暂停壁纸降载 ----
+
+    private void StartFullscreenWatcherIfNeeded()
+    {
+        StopFullscreenWatcher();
+        if (!_settings!.WallpaperPauseOnFullscreen) return;
+        _fsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _fsTimer.Tick += (_, _) => UpdateFullscreenPause();
+        _fsTimer.Start();
+    }
+
+    private void StopFullscreenWatcher()
+    {
+        _fsTimer?.Stop();
+        _fsTimer = null;
+    }
+
+    private void UpdateFullscreenPause()
+    {
+        try
+        {
+            IntPtr fg = GetForegroundWindow();
+            bool fs = false;
+            if (fg != IntPtr.Zero && GetWindowRect(fg, out RECT r))
+            {
+                int w = r.Right - r.Left, h = r.Bottom - r.Top;
+                var wa = SystemParameters.WorkArea;
+                // 前台窗口没有 owner 且其面积 ≥ 95% 工作区 → 视为全屏
+                if (w > 0 && h > 0 && GetWindow(fg, GW_OWNER) == IntPtr.Zero
+                    && w * h >= wa.Width * wa.Height * 0.95)
+                    fs = true;
+            }
+            if (fs != _pausedByFullscreen)
+            {
+                _pausedByFullscreen = fs;
+                ApplyVideoPauseState();
+                foreach (var inst in _instances)
+                    if (inst.Particles is not null)
+                        inst.Particles.Fps = fs ? 8 : (_settings!.IdleReduceFps ? 20 : 30);
+                if (fs) Log?.Invoke("[壁纸] 检测到前台全屏，已暂停壁纸降载");
+            }
+        }
+        catch { }
     }
 
     // ---- 实例创建 ----
@@ -116,8 +262,9 @@ public sealed class WallpaperEngine : IDisposable
     {
         var win = new MpvWallpaperWindow();
         _instances.Add(inst);
-        if (TryResolveFile(_settings!.WallpaperPath, out string full))
-            win.StartPlayback(full, Log, _settings.StretchMode);
+        string? file = CurrentVideoFile;
+        if (file is not null)
+            win.StartPlayback(file, Log, _settings!.StretchMode);
         else
             Log?.Invoke("[壁纸] 视频文件不存在，mpv 已创建但未加载内容");
         return win;
@@ -164,7 +311,11 @@ public sealed class WallpaperEngine : IDisposable
 
     private UIElement BuildWpfContent(WallpaperInstance inst)
     {
-        return _settings!.WallpaperKind switch
+        // HTML 壁纸（默认关闭；WebView2 只读浏览本地 html，隐藏系统 UI）
+        if (_settings!.HtmlWallpaperEnabled && TryResolveFile(_settings.HtmlWallpaperPath, out string html))
+            return BuildHtmlContent(inst, html);
+
+        return _settings.WallpaperKind switch
         {
             WallpaperKind.Image => BuildImageContent(inst),
             WallpaperKind.Video => BuildFallbackVideoContent(inst),
@@ -172,6 +323,45 @@ public sealed class WallpaperEngine : IDisposable
                 ? BuildParticlesContent(inst)
                 : BuildAuroraContent(inst),
         };
+    }
+
+    private UIElement BuildHtmlContent(WallpaperInstance inst, string htmlFile)
+    {
+        try
+        {
+            var web = new WebView2 { DefaultBackgroundColor = System.Drawing.Color.Black };
+            inst.HtmlView = web;
+            _ = InitWebViewAsync(web, htmlFile);
+            return web;
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke("[壁纸] WebView2 初始化失败，回退纯色：" + ex.Message);
+            return new Grid { Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Black) };
+        }
+    }
+
+    private async System.Threading.Tasks.Task InitWebViewAsync(WebView2 web, string htmlFile)
+    {
+        try
+        {
+            string userData = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "DogDesk", "webview2");
+            Directory.CreateDirectory(userData);
+            var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, userData, null);
+            await web.EnsureCoreWebView2Async(env);
+            web.CoreWebView2.Settings.AreDevToolsEnabled = false;
+            web.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+            web.CoreWebView2.Settings.IsStatusBarEnabled = false;
+            web.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+            web.CoreWebView2.Navigate(new Uri(htmlFile).AbsoluteUri);
+            Log?.Invoke("[壁纸] HTML 壁纸已加载：" + Path.GetFileName(htmlFile));
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke("[壁纸] HTML 壁纸加载失败：" + ex.Message);
+        }
     }
 
     private UIElement BuildImageContent(WallpaperInstance inst)
@@ -201,12 +391,18 @@ public sealed class WallpaperEngine : IDisposable
             IsMuted = true,
         };
         inst.FallbackVideo = media;
-        if (TryResolveFile(_settings.WallpaperPath, out string full))
-            media.Source = new Uri(full);
+        string? vfile = CurrentVideoFile;
+        if (vfile is not null)
+            media.Source = new Uri(vfile);
+        else if (TryResolveFile(_settings.WallpaperPath, out string single))
+            media.Source = new Uri(single);
         media.MediaEnded += (_, _) =>
         {
-            media.Position = TimeSpan.Zero;
-            media.Play();
+            if (_settings!.WallpaperLoop)
+            {
+                media.Position = TimeSpan.Zero;
+                media.Play();
+            }
         };
         return media;
     }
@@ -214,7 +410,13 @@ public sealed class WallpaperEngine : IDisposable
     private UIElement BuildParticlesContent(WallpaperInstance inst)
     {
         var host = new Grid { Background = BuildSpaceGradient() };
-        var ctrl = new ParticleFieldControl();
+        var ctrl = new ParticleFieldControl
+        {
+            Preset = _settings!.ParticlePreset ?? ParticleFieldControl.PresetStarfield,
+            MouseInteraction = _settings.WallpaperMouseInteraction,
+            Fps = _settings.IdleReduceFps ? 20 : 30,
+        };
+        inst.Particles = ctrl;
         host.Children.Add(ctrl);
         ctrl.Start();
         return host;
@@ -395,10 +597,16 @@ public sealed class WallpaperEngine : IDisposable
     public void Stop()
     {
         StopSlideshow();
+        StopFullscreenWatcher();
+        _pausedByFullscreen = false;
+        _videoManuallyPaused = false;
+        _videoPlaylist = new List<string>();
+        _videoIndex = -1;
 
         foreach (var inst in _instances)
         {
             inst.InlineBars?.Stop();
+            inst.Particles?.Stop();
             if (inst.Overlay is not null)
                 CloseInjected(inst.Overlay);
             if (inst.Win is not null)
@@ -427,12 +635,17 @@ public sealed class WallpaperEngine : IDisposable
 
     // ---- 工具 ----
 
-    private string DescribeSource() => _settings!.WallpaperKind switch
+    private string DescribeSource()
     {
-        WallpaperKind.Video => "libmpv 视频（全格式+硬解）",
-        WallpaperKind.Image => _settings.SlideshowEnabled ? "图片文件夹轮播" : "图片",
-        _ => _settings.AnimationStyle == AnimationStyle.Particles ? "粒子星空动画" : "极光动画",
-    };
+        if (_settings!.HtmlWallpaperEnabled && !string.IsNullOrWhiteSpace(_settings.HtmlWallpaperPath))
+            return "HTML 网页壁纸（WebView2）";
+        if (_settings.WallpaperKind == WallpaperKind.Video)
+            return _settings.VideoPlaylist?.Count > 1 ? $"libmpv 视频轮播（{_settings.VideoPlaylist.Count} 个）" : "libmpv 视频（全格式+硬解）";
+        if (_settings.WallpaperKind == WallpaperKind.Image)
+            return _settings.SlideshowEnabled ? "图片文件夹轮播" : "图片";
+        return _settings.AnimationStyle == AnimationStyle.Particles
+            ? $"粒子场景预设（{_settings.ParticlePreset}）" : "极光动画";
+    }
 
     private static List<Rect> GetScreens()
     {

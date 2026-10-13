@@ -142,6 +142,54 @@
                            FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,8,0,0" TextWrapping="Wrap"/>
               </StackPanel>
             </Border>
+
+            <!-- v0.8.0 表现层升级 -->
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="场景预设与互动" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                  <TextBlock Text="粒子预设" Width="70" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                  <ComboBox x:Name="ParticlePresetCombo" Style="{StaticResource PanelComboBox}" Width="160" SelectionChanged="OnParticlePresetChanged">
+                    <ComboBoxItem Content="星空" Tag="Starfield"/>
+                    <ComboBoxItem Content="火焰" Tag="Flame"/>
+                    <ComboBoxItem Content="流体" Tag="Fluid"/>
+                    <ComboBoxItem Content="落雨" Tag="Rain"/>
+                  </ComboBox>
+                  <TextBlock Text="（需选「粒子星空」动画样式）" FontSize="11" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource TextSecondary}"/>
+                </StackPanel>
+                <CheckBox x:Name="WallpaperMouseCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="鼠标互动（粒子跟随/涟漪，低耗）" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+                <CheckBox x:Name="WallpaperLoopCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="视频循环播放" Margin="0,6,0,0" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+
+                <TextBlock Text="视频轮播" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,12,0,4"/>
+                <StackPanel Orientation="Horizontal">
+                  <Button x:Name="AddVideosButton" Style="{StaticResource PanelButton}" Content="添加视频（多选入轮播）" Click="OnAddVideosClick"/>
+                  <TextBlock x:Name="VideoPlaylistText" Text="未设置" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource TextSecondary}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                  <Button x:Name="VideoPrevButton" Style="{StaticResource PanelButton}" Content="上一视频" Click="OnVideoPrevClick"/>
+                  <Button x:Name="VideoPauseButton" Style="{StaticResource PanelButton}" Content="暂停/继续" Margin="8,0,0,0" Click="OnVideoPauseClick"/>
+                  <Button x:Name="VideoNextButton" Style="{StaticResource PanelButton}" Content="下一视频" Margin="8,0,0,0" Click="OnVideoNextClick"/>
+                </StackPanel>
+
+                <TextBlock Text="HTML 网页壁纸（实验性，WebView2）" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,12,0,4"/>
+                <CheckBox x:Name="HtmlWallpaperCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="启用 HTML 壁纸（默认关闭；WebView2 内存占用较高）" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+                <Grid Margin="0,6,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBox x:Name="HtmlPathBox" Style="{StaticResource PanelTextBox}" IsEnabled="False"/>
+                  <Button Grid.Column="1" x:Name="HtmlBrowseButton" Style="{StaticResource PanelButton}"
+                          Content="选择 html 文件…" Margin="8,0,0,0" Click="OnHtmlBrowseClick"/>
+                </Grid>
+                <TextBlock Text="说明：仅在本机只读浏览本地 html，隐藏 DevTools/右键菜单；未装 WebView2 运行时将自动禁用。"
+                           FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
           </StackPanel>
         </ScrollViewer>
       </TabItem>
@@ -205,8 +253,24 @@
                           Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
                 <CheckBox x:Name="GradientCheck" Style="{StaticResource PanelCheckBox}"
                           Content="封面主色玻璃感渐变背景" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+                <CheckBox x:Name="MediaBarEmbedCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="嵌入任务栏（SetParent 重定父级，参考 AF Media Bar MIT 自研；可随时切回悬浮）"
+                          Checked="OnEmbedToggled" Unchecked="OnEmbedToggled" Margin="0,8,0,0"/>
+                <CheckBox x:Name="MediaBarOsdCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="音量 OSD 提示" Checked="OnSettingChanged" Unchecked="OnSettingChanged" Margin="0,8,0,0"/>
+                <CheckBox x:Name="MediaBarLyricCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="媒体条内显示两行歌词（当前句+下一句）" Checked="OnSettingChanged" Unchecked="OnSettingChanged" Margin="0,8,0,0"/>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <TextBlock Text="材质" Width="50" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                  <ComboBox x:Name="MediaBarMaterialCombo" Style="{StaticResource PanelComboBox}" Width="140" SelectionChanged="OnSettingChanged">
+                    <ComboBoxItem Content="Acrylic 亚克力"/>
+                    <ComboBoxItem Content="Transparent 透明"/>
+                    <ComboBoxItem Content="Custom 自定义"/>
+                  </ComboBox>
+                  <TextBox x:Name="MediaBarCustomColorBox" Style="{StaticResource PanelTextBox}" Width="100" Margin="10,0,0,0" Text="#14161F"/>
+                </StackPanel>
 
-                <TextBlock Text="提示：鼠标滚轮在媒体条上滚动可调节系统音量；拖动进度条可跳转播放位置。"
+                <TextBlock Text="提示：鼠标滚轮在媒体条上滚动调节系统音量（Ctrl 细调、Shift 静音）；拖动进度条可跳转播放位置。"
                            FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,10,0,0" TextWrapping="Wrap"/>
               </StackPanel>
             </Border>
@@ -300,6 +364,7 @@
                     <ComboBoxItem Content="柱状律动"/>
                     <ComboBoxItem Content="圆环律动"/>
                     <ComboBoxItem Content="波形曲线"/>
+                    <ComboBoxItem Content="像素方块"/>
                   </ComboBox>
                 </StackPanel>
 
@@ -679,6 +744,15 @@
                   <Slider x:Name="PetScaleSlider" Style="{StaticResource PanelSlider}" Minimum="0.5" Maximum="2" Width="280" ValueChanged="OnPetScaleChanged"/>
                   <TextBlock x:Name="PetScaleValue" Text="1.0" Width="40" VerticalAlignment="Center" FontSize="12" Margin="8,0,0,0" Foreground="{StaticResource TextSecondary}"/>
                 </StackPanel>
+                <CheckBox x:Name="PetKeySoundCheck" Style="{StaticResource PanelCheckBox}"
+                          Content="按键音效（猫拍键时的轻响）" Margin="0,8,0,0" Checked="OnPetKeySoundChanged" Unchecked="OnPetKeySoundChanged"/>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                  <TextBlock Text="选中桌宠改名" Width="80" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                  <TextBox x:Name="PetNameBox" Style="{StaticResource PanelTextBox}" Width="160"/>
+                  <Button x:Name="PetRenameButton" Style="{StaticResource PanelButton}" Content="改名" Margin="8,0,0,0" Click="OnPetRenameClick"/>
+                </StackPanel>
+                <TextBlock Text="右键桌宠：摸头 / 对话 / 自定义毛色与大小 / 关闭。"
+                           FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,8,0,0"/>
                 <TextBlock Text="隐私说明：拍爪输入仅用 GetAsyncKeyState 在本机进程内读取键盘状态，离线运行，不收集、不上传任何数据。"
                            FontSize="11" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" Margin="0,10,0,0"/>
                 <TextBlock x:Name="PetStatusText" Text="" FontSize="12" Margin="0,8,0,0" Foreground="{StaticResource TextSecondary}"/>

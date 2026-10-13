@@ -26,6 +26,8 @@ public partial class SpectrumBarsControl : UserControl
     private readonly Rectangle[] _bars = new Rectangle[AudioSpectrumService.BandCount];
     private readonly Line[] _rings = new Line[AudioSpectrumService.BandCount];
     private Polyline? _wave;
+    private const int PixelLevels = 8;
+    private readonly Rectangle[,] _pixel = new Rectangle[AudioSpectrumService.BandCount, PixelLevels];
 
     public static readonly DependencyProperty BarHeightProperty =
         DependencyProperty.Register(nameof(BarHeight), typeof(double), typeof(SpectrumBarsControl),
@@ -131,6 +133,30 @@ public partial class SpectrumBarsControl : UserControl
                 BarsCanvas.Children.Add(poly);
                 break;
             }
+            case SpectrumStyle.Pixel:
+            {
+                double slot = w / n;
+                double block = Math.Max(4, Math.Min(slot * 0.7, h / PixelLevels * 0.8));
+                for (int i = 0; i < n; i++)
+                {
+                    Color c = RgbForBand(i, n);
+                    for (int lv = 0; lv < PixelLevels; lv++)
+                    {
+                        var r = new Rectangle
+                        {
+                            Width = block,
+                            Height = block,
+                            Fill = new SolidColorBrush(c),
+                            Visibility = Visibility.Collapsed,
+                        };
+                        Canvas.SetLeft(r, i * slot + (slot - block) / 2);
+                        Canvas.SetTop(r, h - block * (lv + 1) - lv * 1);
+                        _pixel[i, lv] = r;
+                        BarsCanvas.Children.Add(r);
+                    }
+                }
+                break;
+            }
             default: // Bars
             {
                 double slot = w / n;
@@ -157,6 +183,16 @@ public partial class SpectrumBarsControl : UserControl
         }
 
         _built = true;
+    }
+
+    private static Color RgbForBand(int i, int n)
+    {
+        double t = n <= 1 ? 0 : (double)i / (n - 1);
+        // 蓝->青->绿->黄->红
+        byte r = (byte)(255 * Math.Clamp(t * 2 - 0.4, 0, 1));
+        byte g = (byte)(255 * (1 - Math.Abs(t * 2 - 1)));
+        byte b = (byte)(255 * Math.Clamp(1 - t * 2, 0, 1));
+        return Color.FromArgb(0xFF, r, g, b);
     }
 
     private void OnTick(object? sender, EventArgs e)
@@ -194,6 +230,17 @@ public partial class SpectrumBarsControl : UserControl
                     float v = i < bands.Length ? bands[i] : 0;
                     double y = h - Math.Max(3, v * h * 0.92);
                     _wave.Points[i] = new Point(i * (w / (n - 1)), y);
+                }
+                break;
+            }
+            case SpectrumStyle.Pixel:
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    float v = i < bands.Length ? bands[i] : 0;
+                    int level = Math.Clamp((int)(v * PixelLevels), 0, PixelLevels - 1);
+                    for (int lv = 0; lv < PixelLevels; lv++)
+                        _pixel[i, lv].Visibility = lv <= level ? Visibility.Visible : Visibility.Collapsed;
                 }
                 break;
             }

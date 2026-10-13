@@ -2,7 +2,7 @@
 
 仓库：https://github.com/yyc-i/dogdesk  ·  显示名 `dogdesk`（内部标识 DogDesk）。
 
-**任务栏媒体控制条 + WorkerW 动态壁纸 + libmpv 全格式视频 + 多源桌面歌词 + Folia 风格全屏歌词 + Mineradio 风格沉浸播放 + 桌面 AI 桌宠（本地 Ollama 双通道 LLM + 工具调用）+ 自定义开机动画 + 桌面整理 + 系统优化 + 下载加速与下载管理（aria2 多线程分段）+ macOS 版** —— Windows 10/11 桌面美化与陪伴工具（macOS 版同步提供）。
+**AF Media Bar 式任务栏嵌入媒体条 + WorkerW 动态壁纸 + libmpv 全格式视频 + 多源桌面歌词 + Folia 风格全屏歌词 + Mineradio 风格沉浸播放 + 桌面 AI 桌宠（本地 Ollama 双通道 LLM + 工具调用）+ 自定义开机动画 + 桌面整理 + 系统优化 + 下载加速与下载管理（aria2 多线程分段）+ macOS 版** —— Windows 10/11 桌面美化与陪伴工具（macOS 版同步提供）。
 
 > 注：v0.5.0 起由 MediaBarWallpaper 更名，旧 `%AppData%\MediaBarWallpaper` 配置（settings.json / deskbox.json）在首次启动时自动迁移到 `%AppData%\DogDesk\`，旧文件保留不删除。
 
@@ -12,13 +12,13 @@
 
 | 模块 | 说明 |
 |---|---|
-| 任务栏媒体条 | 无边框透明悬浮窗，吸附任务栏（靠左/居中/靠右，可拖进度条、滚轮调音量）；未播放自动淡出；封面主色生成玻璃感渐变背景 |
+| 任务栏媒体条（v0.8 嵌入化） | 无边框透明悬浮窗，吸附任务栏（靠左/居中/靠右，可拖进度条、滚轮调音量）；未播放自动淡出；封面主色生成玻璃感渐变背景；**v0.8（AF Media Bar 式，MIT 参考+功能级自研）**：① **嵌入/悬浮双模式**——嵌入模式将媒体条设为任务栏子窗口（`SetParent` 到 `Shell_TrayWnd→RebarWindow32` 槽位，类原生；不 hook Explorer/不子类化/不改注册表，随时还原，失败自动回退悬浮）；② **滚轮音量**——悬停滚轮 ±5%、Ctrl±2% 细调、Shift 静音切换，OSD 音量指示（1.2s 淡出）；③ **两行歌词**——媒体条内当前句+下一句随播放同步滚动（可关）；④ **内联频谱**——媒体条底部小频谱条（随频谱样式）；⑤ **材质**——Acrylic（渐变玻璃）/Transparent 透明/Custom 自定义配色 |
 | SMTC 真实会话 | 读取真实曲目/封面/播放状态/时间线；无播放器时自动回退演示数据 |
 | **内置播放内核** | 独立 libmpv 音频会话，驱动本地曲库/在线音源/Navidrome/电台/榜单；**会话路由**在内置与 SMTC 间透明切换 |
 | 本地曲库 / 在线音源 / Navidrome / 均衡器 / 3D 环绕+音效预设 / 3D 歌单架 / 底部实时频谱 / 节拍视觉 / 电台+榜单 / 毛玻璃+视频背景 / 歌词增强 / 记忆播放 / 倍速+音质 / 自建歌单+下一首+收藏 / 歌单导入 | v0.5–v0.6 全部能力保留（网易云等非官方接口已标注"仅供学习、稳定性不保证"） |
-| 全屏沉浸式歌词动画 / 动态配色 / 视频壁纸 / 多屏壁纸 / 图片轮播 / 动画壁纸 / 频谱律动 / 桌面歌词 | v0.4–v0.5 全部能力保留 |
-| **桌面桌宠（v0.7，Windows）** | BongoCat 风格自研：桌面悬浮卡通猫，敲击键盘（A/空格等）实时拍爪动画；透明无边框 `WS_EX_TOOLWINDOW\|NOACTIVATE` 不抢焦点、可拖动；**输入捕捉仅本机读取键盘状态（GetAsyncKeyState），离线运行、不收集不上传**（UI 标注）；**多实例（v0.7.1）**：可同时开多只桌宠，每只独立名称/型号/大小/位置/表情，关闭记忆、重启恢复（`%AppData%\DogDesk\pets\` 每宠一文件+自动备份）；未启用零实例（懒加载） |
-| **AI 桌宠（v0.7，Windows）** | 桌宠即 AI 角色：**点击桌宠**弹出对话气泡（文字 + TTS 语音朗读）；非对话时拍爪照常 |
+| 全屏沉浸式歌词动画 / 动态配色 / 视频壁纸 / 多屏壁纸 / 图片轮播 / 动画壁纸 / 频谱律动（**v0.8 新增 Pixel 像素方块样式**，共 4 样式） / 桌面歌词 | v0.4–v0.5 全部能力保留；**壁纸 v0.8（Wallpaper Engine 级对标，闭源仅效果对标全自研）**：视频壁纸播放控制（暂停/循环）+ 多视频轮播列表、粒子预设扩至 **4 新预设（火焰/星空/流体/落雨）**、鼠标划过粒子跟随/涟漪、**HTML 网页壁纸（WebView2，默认关闭+内存提示）**、前台全屏自动暂停壁纸动画降载、多显示器逐屏独立实例 |
+| **桌面桌宠（v0.7/v0.8，Windows）** | BongoCat 风格自研：**v0.8 表现层升级**——自绘简化 Qwerty 键盘（深色键帽，随窗口缩放），猫趴在键盘上，按任意键**猫爪同步敲击对应键位 + 键帽高亮脉冲 + 可选按键音效**；多帧表情（随机眨眼/耳朵微动/尾巴正弦摆动）；动画按状态调速（互动 ~60fps、空闲 ~8fps 低功耗，键盘底图位图缓存）；**左键摸头反应、右键菜单（摸头/对话/自定义毛色与大小/关闭）**；每只可独立毛色/大小/名字；透明无边框 `WS_EX_TOOLWINDOW\|NOACTIVATE` 不抢焦点、可拖动；**输入捕捉仅本机读取键盘状态（GetAsyncKeyState），离线运行、不收集不上传**（UI 标注）；**多实例（v0.7.1）**：同时开多只，每只独立名称/型号/大小/位置/表情，关闭记忆、重启恢复（`%AppData%\DogDesk\pets\` 每宠一文件+自动备份）；渲染异常自动回退简绘猫保可用 |
+| **AI 桌宠（v0.7，Windows）** | 桌宠即 AI 角色：**左键摸头**（开心反应+音效）、**右键菜单 →「对话」**弹出对话气泡（文字 + TTS 语音朗读）；非对话时拍爪照常 |
 | **LLM 双通道（v0.7）** | **本地优先**：Ollama（http://localhost:11434/v1，OpenAI 兼容、无 key、免费离线、数据不出本机；自动检测服务与已拉取模型，未安装给出 `ollama serve` + `ollama pull qwen2.5:7b` 指引）；**云端可选**：OpenAI 兼容 API（豆包/DeepSeek/OpenAI，用户自备 base_url+key）；统一 `IChatProvider` 抽象，通道/模型/人设可切换 |
 | **工具调用（v0.7，Windows）** | function calling 白名单工具（**默认关闭**，设置页显式开启）：播放控制（上一首/播放暂停/下一首，接媒体条会话）、系统信息（CPU/内存/磁盘/电池，只读）、打开文件/文件夹/URL（白名单扩展名，可执行需确认弹窗）、截图保存（主屏 PNG 存 `%AppData%\DogDesk\screenshots\`）、定时提醒（Timer+弹窗）；全部含参数校验 + 日志「桌宠调用了 XX 工具」；**不提供删除/任意命令执行等危险工具** |
 | **AI 角色人设** | 内置 5 种性格预设（元气少女/知性姐姐/冷淡助手/幽默伙伴/猫娘），system prompt 可自定义编辑；对话上下文保留最近 10 轮；TTS 用 Windows 系统语音（SAPI，离线）朗读回复；**STT 按住说话（v0.7.1，Windows）**：SAPI 语音识别（离线、不上传），可用性自动检测（无语言包时降级纯文本并提示） |
@@ -26,8 +26,8 @@
 | **自定义开机动画（v0.7/v0.7.1）** | 启动时显示开机动画窗口（居中无边框，Esc/点击/超时自动关，默认开启可关）：**Aurora 极光 / Gradient 渐变呼吸 / FlowText 流光文字 / Particle 粒子星云 / Geometry 几何脉冲 / Image 图片** 六种内置样式；**素材库（v0.7.1）**：`%AppData%\DogDesk\boot-anim\` 支持导入图片/视频、预览、设为当前、删除；**AI 生成素材**（默认关闭+隐私提示）：OpenAI 兼容 images API（用户自备 key）生成图自动入库 |
 | **下载加速与下载管理（v0.8，双端）** | 基于 aria2 子进程 + JSON-RPC：**多线程分段 `-x16 -s16`**、任务管理（暂停/继续/取消/失败重试续传）、队列并发 1–16 运行时可调、全局限速运行时生效、剪贴板 http(s) 链接监听（**默认关闭**）、历史持久化 `tasks.json` + 自动备份 `.bak`、完成通知（托盘/页内 Toast）、AI 桌宠白名单工具 `add_download`（需确认）、**空闲无任务自动回收 daemon 无驻留** |
 | 设置持久化 / 系统托盘 / 开机自启 | `%AppData%\DogDesk\settings.json`；托盘；启动文件夹快捷方式（非侵入） |
-| 控制台 | 深色分页 UI（壁纸/媒体条/桌面歌词/频谱/曲库/在线音源/均衡器/电台榜单/歌单架/桌宠/AI 伙伴/开机动画/桌面整理/系统优化/设置），实时日志；**全局热键 Ctrl+Alt+D 显隐主界面 / Ctrl+Alt+P 切换桌宠**；托盘菜单含桌宠/AI 开关；首次运行显示可关闭引导条 |
-| **macOS 版（v0.8.0）** | Avalonia 11：播放/曲库/在线音源(网易云+Navidrome+电台+榜单)/歌单(封面轮播)/均衡器(环绕+倍速+音质)/AI 伙伴(双通道 LLM 对话)/设置/**下载(v0.8)** 八 Tab + 置顶桌面歌词 + 全屏流光歌词 + **开机动画（Aurora/Particle/Pulse/FlowText/Image 五样式 + 素材库导入/预览/设为当前/删除 + AI 生成素材）** + 动态配色 + 记忆播放；libmpv 动态加载（`brew install mpv`）；下载 Tab 同步实现（检测 brew 安装的 aria2c，缺失给安装指引） |
+| 控制台 | 深色分页 UI（壁纸/媒体条/桌面歌词/频谱/曲库/在线音源/均衡器/电台榜单/歌单架/桌面整理/系统优化/桌宠/AI 伙伴/开机动画/**下载**/设置 共 16 Tab），实时日志；**全局热键 Ctrl+Alt+D 显隐主界面 / Ctrl+Alt+P 切换桌宠**；托盘菜单含桌宠/AI 开关；首次运行显示可关闭引导条 |
+| **macOS 版（v0.8.0）** | Avalonia 11：播放/曲库/在线音源(网易云+Navidrome+电台+榜单)/歌单(封面轮播)/均衡器(环绕+倍速+音质)/AI 伙伴(双通道 LLM 对话)/设置/**下载(v0.8)** 八 Tab + 置顶桌面歌词（当前句+下一句+译文行）+ 全屏流光歌词 + **开机动画（Aurora/Particle/Pulse/FlowText/Image 五样式 + 素材库导入/预览/设为当前/删除 + AI 生成素材）** + 动态配色 + 记忆播放；libmpv 动态加载（`brew install mpv`）；下载 Tab 用 Core **进程式简版内核**（逐任务子进程调用 brew 安装的 aria2c，缺失给 `brew install aria2` 指引） |
 
 ## 下载模块与 aria2 集成（v0.8）
 
@@ -99,10 +99,10 @@ dotnet publish src/DogDesk.Mac/DogDesk.Mac.csproj -c Release -r osx-arm64 --self
 - **非侵入式**（壁纸/媒体条/歌词/桌面格子/桌宠）：不 hook Explorer、不改注册表；系统优化模块除外（用户显式触发）
 - **壁纸宿主**：`Progman` → `0x052C` → 枚举含 `SHELLDLL_DefView` 的顶层窗口 → WorkerW（Win8+ 经典方案）
 - **桌面格子**：每屏透明叠加窗 `SetParent` 到 WorkerW；格子为文件链接（不移动原位）
-- **桌宠**：透明无边框置顶窗 + `GetAsyncKeyState` 轮询驱动拍爪动画（非全局钩子，无权限风险）；点击（拖动距离 <4px）弹对话气泡
+- **桌宠**：透明无边框置顶窗 + `GetAsyncKeyState` 轮询驱动拍爪动画（非全局钩子，无权限风险）；左键摸头、右键菜单（摸头/对话/自定义毛色大小/关闭）；v0.8 键盘画面为自绘 Qwerty（键帽高亮脉冲+爪击插值，键盘层 BitmapCache 位图缓存，空闲降帧）
 - **开机动画**：App 启动时非模态展示（不阻塞主窗口初始化），Esc/点击/超时关闭，`BootAnimEnabled=false` 零创建
 - **下载模块（v0.8）**：`DownloadManager` 拉起 aria2c daemon（端口 6800..6900 空闲端口 + `--rpc-secret`），JSON-RPC `tellActive/tellWaiting/tellStopped` 1s 轮询，`pause/unpause/remove/addUri` 控制任务，`changeGlobalOption` 运行时调并发与限速，无活动任务即杀 daemon；`ClipboardLinkWatcher` 仅本机识别 http(s) 链接（默认关）；`DownloadTask` 模型 + `tasks.json`/`tasks.json.bak` 持久化
-- **媒体条定位**：`FindWindow("Shell_TrayWnd")` → `ComputeAnchor` → `SetWindowPos`
+- **媒体条定位**：悬浮模式 `FindWindow("Shell_TrayWnd")` → `ComputeAnchor` → `SetWindowPos`；**嵌入模式（v0.8）**：`SetParent` 媒体条窗口到任务栏 `RebarWindow32` 子槽位（去 WS_POPUP 加 WS_CHILD + WS_EX_NOACTIVATE/TOOLWINDOW），还原=`SetParent(IntPtr.Zero)`+恢复样式，失败自动回退悬浮；不 hook Explorer、不子类化、不改注册表
 - **libmpv 集成**：Windows 用 NuGet `Endpne.LibMPV.Windows`；macOS 动态加载系统 `libmpv.dylib`
 - **歌词**：`Lyricify.Lyrics.Helper` 多源检索 + 逐字音节级高亮
 
@@ -123,22 +123,43 @@ dotnet build src/DogDesk/DogDesk.csproj -c Release
 1. 运行 `DogDesk.exe`；首次可勾选「设置 → 开机自启 / 最小化到托盘」；启动动画默认显示（Esc 跳过）
 2. 「壁纸」「频谱」「媒体条」「桌面歌词」「曲库」「在线音源」「均衡器」「电台/榜单」「歌单架」「桌面整理」「系统优化」各页用法同 v0.5–v0.6
 2b. **「下载」页（v0.8）**：新建下载贴入 http(s) 直链 URL、浏览保存目录、可改文件名；任务列表支持暂停/继续/取消/重试；可调队列并发数与全局限速；**剪贴板监听默认关**，需要时在设置中开启；下载完成弹托盘通知
-3. **「桌宠」页**：勾选启用 → 桌面出现卡通猫；敲键盘看拍爪；**点击猫弹出 AI 对话气泡**
+3. **「桌宠」页**：勾选启用 → 桌面出现趴在键盘上的卡通猫；敲键盘看爪击键帽高亮；**左键摸头，右键菜单选「对话」弹出 AI 对话气泡**；可自定义毛色/大小/名字
 4. **「AI 伙伴」页**：默认本地通道——点「检测 Ollama」，未安装按提示装好并 `ollama pull qwen2.5:7b` 后刷新模型下拉；或切「云端」填 base_url/key/model（默认 doubao-seed-1.6-lite）；选人设、开 TTS/工具开关 → 对话
-5. **「开机动画」页**：选样式（Aurora/Gradient/FlowText/Image）、调时长、「预览」；导入图片做 Image 素材
+5. **「开机动画」页**：选样式（Aurora/Gradient/FlowText/Particle/Geometry/Image）、调时长、「预览」；素材库导入/设为当前/删除/AI 生成
 6. **「系统优化」→ ③ 视觉效果（实验性）**：🔴 红风险，阅读警告后按需「应用」/「卸载」（提权）
 
 ## 已知限制
 
-- **下载模块（v0.8，诚实）**：仅支持 http/https 直链，**不支持 BT/磁力**；实际速度受源站带宽与网络限制，多线程分段不保证突破源站限速；aria2 daemon 空闲自动退出（无驻留）；Linux 交叉编译环境无法真机运行，下载功能需 Windows/macOS 实机验证；仅用于用户自己的合法链接，不提供会员绕过/代理加速/侵权下载能力
+- **v0.8 任务栏嵌入（诚实）**：仅支持**水平任务栏**（Win10/11 水平布局；竖向任务栏不在本版范围）；嵌入在 Linux 交叉编译环境**无法真机验证**（需 Explorer 真实任务栏窗口），代码路径完整、失败自动回退悬浮、还原路径已就位，真机表现待 Windows 实机确认；多屏任务栏嵌入当前以主屏为准（多 Shell_TrayWnd 尽力）
+- **v0.8 壁纸（诚实）**：HTML 网页壁纸（WebView2）已装包并通过编译、默认关闭，但**真实渲染需 Windows 真机 + WebView2 Runtime** 验证；粒子鼠标互动/全屏降载仅前台交互时启用；火焰/星空/流体/落雨为参数化自绘粒子
+- **v0.8 桌宠（诚实）**：键盘拍爪/键帽高亮/音效的实时观感需 Windows 真机验证；输入捕捉仅本机 GetAsyncKeyState、离线；表情动画为自绘（非位图素材）
+- **下载模块（v0.8，诚实）**：Windows 版打包自带 `aria2c.exe`（v1.37.0，GPL-2.0，随包 LICENSE.txt）以 **JSON-RPC daemon** 方式调用；macOS 版使用同一 Core 的**进程式简版内核**（逐任务子进程 `aria2c -x16 -s16 --continue`，brew 安装，缺失给指引）——两端内核不同但行为一致；仅支持 http/https 直链，**不支持 BT/磁力**；实际速度受源站带宽与网络限制，多线程分段不保证突破源站限速；Linux 交叉编译环境无法真机运行，下载功能需 Windows/macOS 实机验证；仅用于用户自己的合法链接，不提供会员绕过/代理加速/侵权下载能力
 - **v0.7.1 补齐后仍降级（诚实）**：桌宠 ImageSeq 帧序列导入未做（多实例用自绘内置猫）；开机动画 Video 样式未实现播放（素材库可登记/设为当前，但启动窗口不播视频）；表情态（idle/happy/sleep）数据已持久化但窗口未随表情切换绘制；STT 需系统语音识别语言包（无包时自动降级文字输入，代码已检测未在真机实测识别）；AI 生成素材依赖用户配置的图像 API（默认关闭）；macOS STT 未实现（需原生桥接，设置页已说明）；macOS 桌宠/ZenDesktop 不提供（Windows-only）
 - **垂直任务栏**：歌词/壁纸已做基础兜底，未深度适配
-- **频谱精度**：loopback 为系统输出混音，非单应用音频
+- **频谱精度**：loopback 为系统输出混音，非单应用音频；Pixel 频谱样式 Mac 不可用（无系统音频回采）
 - **libmpv 体积**：全功能静态构建 dll 较大（~117MB）
 - **非商业签名**：SmartScreen 可能提示「未知发布者」；macOS 版未签名需右键打开
 - **在线音源依赖网络**：网易云/QQ音乐/LRCLIB 接口可能变更（非官方接口，已标注）；LLM 云端通道依赖用户 key 与网络
 - **系统优化命令**：未在每台机器逐一验证，执行前务必先建还原点；ZenDesktop 修改 Explorer 进程，风险更高
-- **macOS 版**：需 `brew install mpv`（及 Ollama 用于 AI 本地通道）；未在真机实测（Linux 交叉发布，仅保证编译/打包正确）
+- **macOS 版**：需 `brew install mpv`（及 Ollama 用于 AI 本地通道、aria2 用于下载 Tab）；未在真机实测（Linux 交叉发布，仅保证编译/打包正确）
+
+## 效果对齐验收表（v0.8.0）
+
+| # | 参考 | 对齐情况 | 状态 |
+|---|---|---|---|
+| 1 | AF Media Bar（MIT）→ 任务栏嵌入媒体条 | 嵌入/悬浮双模式、两行歌词、波形/像素频谱、滚轮音量+OSD、材质自定义、内存强化 | 代码完成、构建 0/0；**嵌入观感/滚轮灵敏度/两行歌词同步待 Windows 真机验证** |
+| 2 | BongoCat（原版 Apache-2.0 参考；重构版 AGPL-3.0 未搬）→ 桌宠敲键盘 | 键盘上趴猫、爪击+键帽高亮+音效、多表情动画、多只并存自定义、互动、空闲降帧 | 代码完成、构建 0/0；**实时观感待真机验证** |
+| 3 | Wallpaper Engine（闭源仅对标）→ 壁纸 | 视频控制+轮播、4 新粒子预设、音频响应增强、HTML（WebView2 默认关）、鼠标互动、多屏独立、全屏降载 | 代码完成、构建 0/0；**WebView2/多屏/全屏检测待真机验证** |
+| 4 | OpenSpeedy 类 → 下载加速 | aria2 多线程分段、下载 Tab、剪贴板识别（默认关）、完成通知、桌宠工具 | Windows 随包 aria2c + JSON-RPC；Mac brew + 进程式；**实速待真机验证** |
+| 5 | Mineradio（GPL，功能级自研）→ 3D 环绕/歌单架/频谱/节拍/电台/毛玻璃/记忆播放/倍速音质/歌单 | 代码未动，回归通过（构建 0/0） | 保真保留 |
+| 6 | Folia（AGPL，功能级自研）→ 全屏歌词×3/曲库/在线/Navidrome/均衡器/动态配色/libmpv+路由 | 代码未动，回归通过 | 保真保留 |
+| 7 | Neuro-sama 类 → AI 桌宠双通道+Agent 工具 | 代码未动，回归通过（新增 add_download 工具） | 保真保留 |
+| 8 | Lanboo 兰博类 → 整体美化观感 | 深色体系全页统一、动态壁纸+媒体条+歌词联动 | 已完成 |
+| 9 | DeskBox/Winhance/Win11Debloat → 系统优化 | 代码未动，回归通过（风险分级/可撤销保留） | 保真保留 |
+| 10 | ZenDesktop 类 → 液态玻璃 | 封装脚本保留（红风险默认关） | 保真保留 |
+| 11 | v0.7.1 全部（多实例桌宠/开机动画素材库/STT/多屏截图/热键/托盘/内存） | 代码未动，回归通过 | 保真保留 |
+
+> 说明：所有"待真机验证"项均因本项目在 Linux 交叉编译环境（无 Windows 运行时/Explorer/WebView2 Runtime）无法实测，代码路径已编译通过并含失败回退；真机验收项按上表逐项核对。
 
 ## 目录结构
 
@@ -152,7 +173,8 @@ DogDesk/
 │   │       │                        #   ChatCompletions / ToolRegistry / CharacterPresets / ImageGenClient
 │   │       ├── Pets/                # PetStore（桌宠持久化：%AppData%\DogDesk\pets\ 每宠一文件+备份）
 │   │       ├── BootAnim/            # BootAnimStore（开机动画素材库索引）
-│   │       ├── Download/            # DownloadManager（aria2 子进程+JSON-RPC）/ ClipboardLinkWatcher（默认关）
+│   │       ├── Download/            # DownloadManager（aria2 子进程+JSON-RPC，Windows）/ ClipboardLinkWatcher（默认关）
+│   │       ├── Downloads/           # DownloadManager（进程式简版内核，macOS 下载 Tab 用）/ DownloadTask
 │   │       ├── Effect/ Playback/ MusicSource/ Playlists/ Settings/ Lyrics/ SpectrumAnalyzer/ Equalizer ...
 │   ├── DogDesk/           # Windows WPF 版
 │   │   ├── App.xaml(.cs)            # 入口 + 开机动画展示 + 单例 + 会话路由
@@ -177,7 +199,7 @@ DogDesk/
 - **Winhance**（[memstechtips/Winhance](https://github.com/memstechtips/Winhance)，PolyForm Shield 1.0.0）：仅参考功能分区，自研实现
 - **Win11Debloat**（[Raphire/Win11Debloat](https://github.com/Raphire/Win11Debloat)，MIT）：参考批量卸载与撤销还原思路，自研实现
 - **Mineradio**（[XxHuberrr/Mineradio](https://github.com/XxHuberrr/Mineradio)，GPL）：仅参考功能形态，**功能级自研复刻**（mpv af 链/Viewport3D/频谱节拍检测）
-- **BongoCat**（[ayangweb/BongoCat](https://github.com/ayangweb/BongoCat)，MIT；[vladelaina/BongoCat](https://github.com/vladelaina/BongoCat) 重构版）：仅参考"键盘驱动桌宠拍打"交互形态，**自绘卡通猫 + GetAsyncKeyState 自研实现，未复制代码/素材**
+- **BongoCat**（[ayangweb/BongoCat](https://github.com/ayangweb/BongoCat)，**Apache-2.0** 原版：v0.8 键盘画面/拍爪思路参考，源码文件头已保留版权声明；[vladelaina/BongoCat](https://github.com/vladelaina/BongoCat) 重构版，**AGPL-3.0：未搬任何代码/素材**，仅对标效果）：**自绘 Qwerty 键盘 + 卡通猫 + GetAsyncKeyState 自研实现**
 - **Open-LLM-VTuber**（[Open-LLM-VTuber/Open-LLM-VTuber](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber)）：仅参考"AI 角色 + LLM/TTS/STT"产品形态，**功能级简化自研**（LLM 双通道 + 工具调用 + SAPI TTS），未复制代码
 - **ZenDesktop**（[Liset999/ZenDesktop](https://github.com/Liset999/ZenDesktop)，Windhawk mod）：仅提供**安装/卸载封装脚本**（GPL-3.0 只封装流程，不复制其 mod 代码）
 - **Ollama**（[ollama/ollama](https://github.com/ollama/ollama)，MIT）：本地 LLM 通道运行时依赖，用户自行安装

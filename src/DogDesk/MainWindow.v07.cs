@@ -78,12 +78,15 @@ public partial class MainWindow
     {
         try
         {
+            double scale = Math.Clamp(_settings.PetScale, 0.5, 2.0) * Math.Clamp(info.Scale, 0.5, 2.0);
             var w = new PetWindow
             {
                 Left = info.X,
                 Top = info.Y,
-                Width = 120 * _settings.PetScale,
-                Height = 120 * _settings.PetScale,
+                Width = 320 * scale,
+                Height = 270 * scale,
+                FurColor = info.Color,
+                KeySoundEnabled = _settings.PetKeySound,
             };
             w.SourceInitialized += (_, _) => w.ApplyNoActivate();
             w.PositionChanged += p =>
@@ -91,9 +94,19 @@ public partial class MainWindow
                 info.X = (int)p.Left; info.Y = (int)p.Top;
                 try { PetStore.Save(info); } catch { }
             };
-            w.Clicked += p =>
+            // 左键摸头（开心反应，已在窗口内处理）；对话改走右键菜单
+            w.DialogRequested += p =>
             {
                 try { new PetChatWindow(AskAiAsync) { Left = p.Left - 140, Top = p.Top - 200 }.Show(); } catch { }
+            };
+            w.CustomizeRequested += p => OnCustomizePet(info);
+            w.CloseRequested += p =>
+            {
+                try { p.Close(); } catch { }
+                _pets.Remove(info.Name);
+                _petInfos.Remove(info);
+                try { PetStore.Delete(info.Name); } catch { }
+                RefreshPetList();
             };
             w.Show();
             w.StartPolling();
@@ -101,6 +114,34 @@ public partial class MainWindow
             _petInfos.Add(info);
         }
         catch { }
+    }
+
+    /// <summary>右键「自定义颜色/大小」：弹窗修改毛色与独立缩放并持久化。</summary>
+    private void OnCustomizePet(PetInfo info)
+    {
+        try
+        {
+            string? color = PromptDialog.Show($"桌宠「{info.Name}」毛色（十六进制，如 #FFF3E0）", info.Color);
+            if (!string.IsNullOrWhiteSpace(color))
+            {
+                info.Color = color.Trim();
+            }
+            string? scale = PromptDialog.Show($"桌宠「{info.Name}」缩放（0.5 .. 2.0）", info.Scale.ToString("0.0"));
+            if (!string.IsNullOrWhiteSpace(scale) && double.TryParse(scale, out double s))
+            {
+                info.Scale = Math.Clamp(s, 0.5, 2.0);
+            }
+            PetStore.Save(info);
+            if (_pets.TryGetValue(info.Name, out var w))
+            {
+                w.FurColor = info.Color;
+                double sc = Math.Clamp(_settings.PetScale, 0.5, 2.0) * Math.Clamp(info.Scale, 0.5, 2.0);
+                w.Width = 320 * sc; w.Height = 270 * sc;
+            }
+            RefreshPetList();
+            PetStatusText.Text = "已更新桌宠外观";
+        }
+        catch (Exception ex) { PetStatusText.Text = "自定义失败：" + ex.Message; }
     }
 
     private void RefreshPetList()
@@ -185,10 +226,14 @@ public partial class MainWindow
             _settings.PetScale = e.NewValue;
             PetScaleValue.Text = e.NewValue.ToString("0.0");
             _settingsService.Save();
-            foreach (var w in _pets.Values)
+            foreach (var info in _petInfos)
             {
-                w.Width = 120 * e.NewValue;
-                w.Height = 120 * e.NewValue;
+                if (_pets.TryGetValue(info.Name, out var w))
+                {
+                    double sc = Math.Clamp(e.NewValue, 0.5, 2.0) * Math.Clamp(info.Scale, 0.5, 2.0);
+                    w.Width = 320 * sc;
+                    w.Height = 270 * sc;
+                }
             }
         }
         catch { }

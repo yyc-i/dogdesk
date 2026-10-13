@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -19,6 +20,10 @@ namespace DogDesk.Views;
 public partial class MediaBarWindow : Window
 {
     private const double BarHeightDip = 56;
+    private const int GWL_STYLE = -16;
+    private const long WS_CHILD = 0x40000000;
+    private const long WS_POPUP = 0x80000000;
+    private const uint SWP_FRAMECHANGED = 0x0020;
 
     private readonly IMediaSession _session;
     private readonly AppSettings _settings;
@@ -27,10 +32,12 @@ public partial class MediaBarWindow : Window
     private NativeMethods.RECT _lastTaskbarRect;
     private bool _positioned;
     private bool _dragging;
+    private bool _embedded;
+    private IntPtr _embedParent;
 
     public TaskbarService.DockPosition Dock { get; set; } = TaskbarService.DockPosition.Center;
 
-    public MediaBarWindow(IMediaSession session, AppSettings settings)
+    public MediaBarWindow(IMediaSession session, AppSettings settings, AudioSpectrumService? spectrum = null)
     {
         InitializeComponent();
         _session = session;
@@ -39,6 +46,13 @@ public partial class MediaBarWindow : Window
 
         Width = settings.MediaBarWidth;
         Height = BarHeightDip;
+
+        if (settings.MediaBarInlineSpectrum && spectrum is not null)
+        {
+            InlineSpectrum.SpectrumStyle = settings.SpectrumStyle;
+            InlineSpectrum.Visibility = Visibility.Visible;
+            InlineSpectrum.Loaded += (_, _) => InlineSpectrum.Start(spectrum);
+        }
 
         SourceInitialized += (_, _) => ApplyWindowStyle();
         Loaded += (_, _) => Reposition();
@@ -115,16 +129,151 @@ public partial class MediaBarWindow : Window
         Reposition();
     }
 
-    /// <summary>应用设置变化（渐变开关 / 自动隐藏）到当前窗口。</summary>
-    public void RefreshFromSettings()
+    // ---- 任务栏嵌入（SetParent 子窗口，自包含，不影响其它窗口/服务） ----
+
+    /// <summary>切换嵌入⇄悬浮。失败自动回退悬浮并写日志。</summary>
+    public void SetEmbed(bool on)
     {
-        if (!_settings.MediaBarCoverGradient)
+        try
         {
-            RootBorder.Background = new SolidColorBrush(Color.FromArgb(0xE6, 0x19, 0x21, 0x2E));
+            IntPtr hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero) return;
+
+            if (on)
+            {
+                IntPtr tray = NativeMethods.FindWindow("Shell_TrayWnd", null);
+                if (tray == IntPtr.Zero) { LogFallback("未找到任务栏 Shell_TrayWnd"); return; }
+                IntPtr rebar = NativeMethods.FindWindowEx(tray, IntPtr.Zero, "ReBarWindow32", null);
+                if (rebar == IntPtr.Zero) rebar = tray; // 兜底：直接挂托盘
+                if (NativeMethods.GetWindowRect(rebar, out var r) == false) { LogFallback("读取 Rebar 矩形失败"); return; }
+
+                _layoutTimer.Stop();
+                NativeMethods.SetParent(hwnd, rebar);
+                long style = NativeMethods.GetWindowLongPtr(hwnd, GWL_STYLE).ToInt64();
+                NativeMethods.SetWindowLongPtr(hwnd, GWL_STYLE, new IntPtr((style & ~WS_POPUP) | WS_CHILD));
+                long ex = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE).ToInt64();
+                NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE,
+                    new IntPtr(ex | NativeMethods.WS_EX_NOACTIVATE | NativeMethods.WS_EX_TOOLWINDOW));
+
+                int barW = (int)Width;
+                int barH = (r.Bottom - r.Top) - 4;
+                // 槽位：右侧避开任务按钮区，靠左贴边偏移 8
+                int slotX = 8;
+                int slotY = 2;
+                NativeMethods.SetWindowPos(hwnd, IntPtr.Zero, slotX, slotY, barW, barH,
+                    NativeMethods.SWP_NOACTIVATE | SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW);
+                InvalidateVisual();
+                UpdateLayout();
+                _embedded = true;
+                _embedParent = rebar;
+            }
+            else
+            {
+                if (!_embedded) return;
+                NativeMethods.SetParent(hwnd, IntPtr.Zero);
+                long style = NativeMethods.GetWindowLongPtr(hwnd, GWL_STYLE).ToInt64();
+                NativeMethods.SetWindowLongPtr(hwnd, GWL_STYLE, new IntPtr((style & ~WS_CHILD) | WS_POPUP));
+                _embedded = false;
+                _embedParent = IntPtr.Zero;
+                _positioned = false;
+                _layoutTimer.Start();
+                Reposition();
+            }
+        }
+        catch (Exception ex)
+        {
+            LogFallback("嵌入异常：" + ex.Message);
+            try { SetEmbed(false); } catch { }
+        }
+    }
+
+    private void LogFallback(string msg)
+    {
+        System.Diagnostics.Debug.WriteLine("[MediaBar] " + msg);
+    }
+
+    /// <summary>滚轮音量（修饰键：Ctrl 细调 / Shift 静音切换）。</summary>
+    private void OnMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!_volume.Available) return;
+        float v = _volume.GetVolume();
+        double step = (Keyboard.Modifiers & ModifierKeys.Control) != 0 ? 0.02 : 0.05;
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
+        {
+            _volume.SetMute(!_volume.GetMute());
         }
         else
         {
-            RefreshSessionUi(); // 会重建封面渐变
+            v += e.Delta > 0 ? (float)step : -(float)step;
+            _volume.SetVolume(Math.Clamp(v, 0f, 1f));
+        }
+        VolumeText.Text = $"{(int)Math.Round(_volume.GetVolume() * 100)}%";
+        if (_settings.MediaBarOsd) ShowVolumeOsd();
+        e.Handled = true;
+    }
+
+    private Window? _osd;
+    private void ShowVolumeOsd()
+    {
+        try
+        {
+            _osd?.Close();
+            _osd = new Window
+            {
+                Width = 120, Height = 60,
+                WindowStyle = WindowStyle.None,
+                AllowsTransparency = true,
+                Background = new SolidColorBrush(Color.FromArgb(200, 20, 22, 31)),
+                Topmost = true, ShowInTaskbar = false,
+                Owner = this,
+            };
+            var tb = new TextBlock
+            {
+                Text = $"🔊 {VolumeText.Text}",
+                Foreground = Brushes.White, FontSize = 18,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            _osd.Content = tb;
+            _osd.Show();
+            var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
+            t.Tick += (_, _) => { t.Stop(); try { _osd?.Close(); } catch { } _osd = null; };
+            t.Start();
+        }
+        catch { }
+    }
+
+    /// <summary>媒体条两行歌词：由主窗口在歌词滚动时推送（当前行+下一行）。</summary>
+    public void UpdateLyric(string current, string next)
+    {
+        if (!_settings.LyricsDualLine) { LyricPanel.Visibility = Visibility.Collapsed; return; }
+        LyricPanel.Visibility = string.IsNullOrEmpty(current) ? Visibility.Collapsed : Visibility.Visible;
+        LyricCurrent.Text = current;
+        LyricNext.Text = next;
+    }
+
+    /// <summary>应用设置变化（渐变开关 / 自动隐藏）到当前窗口。</summary>
+    public void RefreshFromSettings()
+    {
+        switch (_settings.MediaBarMaterial)
+        {
+            case "Transparent":
+                RootBorder.Background = new SolidColorBrush(Color.FromArgb(0x33, 0, 0, 0));
+                break;
+            case "Custom":
+                try
+                {
+                    var c = (Color)ColorConverter.ConvertFromString(_settings.MediaBarCustomColor ?? "#14161F");
+                    RootBorder.Background = new SolidColorBrush(c);
+                }
+                catch { goto default; }
+                break;
+            default: // Acrylic：真亚克力需 SetWindowCompositionAttribute，当前回退封面渐变
+                if (!_settings.MediaBarCoverGradient)
+                    RootBorder.Background = new SolidColorBrush(Color.FromArgb(0xE6, 0x19, 0x21, 0x2E));
+                else
+                    RefreshSessionUi();
+                break;
         }
         AnimateOpacity(_session.IsPlaying ? 1.0 : (_settings.MediaBarAutoHide ? 0.12 : 0.35));
     }
@@ -147,6 +296,7 @@ public partial class MediaBarWindow : Window
     {
         TitleText.Text = _session.Title;
         ArtistText.Text = _session.Artist;
+        UpdateLyric("", ""); // 切歌清空旧歌词，等主窗口推送新行
         PlayButton.Content = _session.IsPlaying ? "\u23F8" : "\u25B6";
 
         RefreshProgress(_session.Progress01);
@@ -232,18 +382,6 @@ public partial class MediaBarWindow : Window
         double f = Math.Clamp(p.X / w, 0, 1);
         ProgressFill.Width = w * f;
         _session.Seek(f);
-    }
-
-    // ---- 滚轮音量 ----
-
-    private void OnMouseWheel(object sender, MouseWheelEventArgs e)
-    {
-        if (!_volume.Available) return;
-        float v = _volume.GetVolume();
-        v += e.Delta > 0 ? 0.05f : -0.05f;
-        _volume.SetVolume(v);
-        VolumeText.Text = $"{(int)Math.Round(_volume.GetVolume() * 100)}%";
-        e.Handled = true;
     }
 
     private void OnPrevClick(object sender, RoutedEventArgs e) => _session.Previous();

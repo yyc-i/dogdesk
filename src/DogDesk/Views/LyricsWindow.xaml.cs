@@ -36,6 +36,9 @@ public partial class LyricsWindow : Window
     private SolidColorBrush _plainBrush = new(Colors.White);
     private readonly TranslateTransform _vibrate = new();
 
+    /// <summary>桌面歌词行推进时触发（当前行/下一行纯文本），供媒体条双行歌词订阅。</summary>
+    public event Action<string, string>? LineChanged;
+
     public LyricsWindow(IMediaSession session, LyricsService lyrics, AppSettings settings)
     {
         InitializeComponent();
@@ -174,6 +177,7 @@ public partial class LyricsWindow : Window
                 _sylRuns = null;
                 CurrentLine.Text = "♪";
                 NextLine.Text = "";
+                LineChanged?.Invoke("", "");
             }
             return;
         }
@@ -201,6 +205,7 @@ public partial class LyricsWindow : Window
         {
             CurrentLine.Text = "♪";
             NextLine.Text = "";
+            LineChanged?.Invoke("", "");
             return;
         }
 
@@ -226,6 +231,10 @@ public partial class LyricsWindow : Window
         }
 
         NextLine.Text = idx + 1 < lines.Count ? Clean(lines[idx + 1].Text) : "";
+
+        // 推送纯文本双行给媒体条（无下一行/空行时给空串，回退封面+标题）
+        string nextPlain = idx + 1 < lines.Count ? CleanOrEmpty(lines[idx + 1].Text) : "";
+        LineChanged?.Invoke(Clean(line.Text), nextPlain);
     }
 
     /// <summary>按播放位置把已唱音节染成主题色。</summary>
@@ -275,4 +284,8 @@ public partial class LyricsWindow : Window
         if (string.IsNullOrWhiteSpace(text)) return "♪";
         return text.Trim();
     }
+
+    /// <summary>同 Clean，但空行返回空串（用于媒体条"下一行"，无内容时回退封面）。</summary>
+    private static string CleanOrEmpty(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? "" : text.Trim();
 }

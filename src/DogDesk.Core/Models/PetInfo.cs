@@ -26,4 +26,12 @@ public sealed class PetInfo
     public string Expression { get; set; } = "idle";
 
     public int ZIndex { get; set; } = 0;
+
+    // ---- v0.8.0 表现层升级（纯增量字段；旧 JSON 缺省时取默认值，向后兼容）----
+
+    /// <summary>毛色（十六进制，如 #FFF3E0；空/非法时用默认色）。</summary>
+    public string Color { get; set; } = "#FFF3E0";
+
+    /// <summary>每只桌宠的独立缩放（0.5 .. 2.0；默认 1.0，再乘全局 PetScale）。</summary>
+    public double Scale { get; set; } = 1.0;
 }

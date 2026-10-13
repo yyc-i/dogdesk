@@ -10,7 +10,7 @@ public enum StretchMode { Cover, Contain, Stretch }
 public enum AnimationStyle { Aurora, Particles }
 
 /// <summary>频谱可视化样式。</summary>
-public enum SpectrumStyle { Bars, Ring, Wave }
+public enum SpectrumStyle { Bars, Ring, Wave, Pixel }
 
 /// <summary>全屏沉浸式歌词动画样式（Folia 风格自研复刻）。</summary>
 public enum LyricsAnimationStyle { Flow, Name, Chorus }
@@ -34,6 +34,22 @@ public sealed class AppSettings
     public bool SlideshowEnabled { get; set; }
     public double SlideshowIntervalSec { get; set; } = 15.0;
 
+    // ---- v0.8.0 壁纸表现层升级（纯增量）----
+    /// <summary>粒子/场景预设：Starfield 星空 / Flame 火焰 / Fluid 流体 / Rain 落雨。</summary>
+    public string ParticlePreset { get; set; } = "Starfield";
+    /// <summary>鼠标互动（粒子跟随/涟漪，默认开；仅前台交互时启用以降载）。</summary>
+    public bool WallpaperMouseInteraction { get; set; } = true;
+    /// <summary>视频壁纸循环（默认开）。</summary>
+    public bool WallpaperLoop { get; set; } = true;
+    /// <summary>多视频轮播列表（绝对路径；非空时视频壁纸按此列表上一/下一/自动轮播）。</summary>
+    public List<string> VideoPlaylist { get; set; } = new();
+    /// <summary>HTML 壁纸总开关（默认关闭；WebView2 内存占用较高，需用户显式开启）。</summary>
+    public bool HtmlWallpaperEnabled { get; set; }
+    /// <summary>本地 html 文件路径（HTML 壁纸源）。</summary>
+    public string HtmlWallpaperPath { get; set; } = "";
+    /// <summary>全屏（前台独占）时自动暂停壁纸动画/视频以降载（默认开）。</summary>
+    public bool WallpaperPauseOnFullscreen { get; set; } = true;
+
     // ---- 频谱 ----
     public bool SpectrumEnabled { get; set; }
     public SpectrumStyle SpectrumStyle { get; set; } = SpectrumStyle.Bars;
@@ -46,6 +62,20 @@ public sealed class AppSettings
     public double MediaBarWidth { get; set; } = 360.0;            // 240 .. 520
     public bool MediaBarAutoHide { get; set; } = true;            // 未播放自动淡出
     public bool MediaBarCoverGradient { get; set; } = true;       // 封面主色玻璃感渐变
+
+    // ---- 任务栏媒体条 v0.8（AF Media Bar 风格升级）----
+    /// <summary>嵌入模式（窗口设为任务栏子窗口，类原生；默认关=悬浮模式）。</summary>
+    public bool MediaBarEmbed { get; set; }
+    /// <summary>外观材质：Acrylic 亚克力 / Transparent 透明 / Custom 自定义配色。</summary>
+    public string MediaBarMaterial { get; set; } = "Acrylic";
+    /// <summary>Custom 材质的主背景色。</summary>
+    public string MediaBarCustomColor { get; set; } = "#14161F";
+    /// <summary>任务栏悬停滚轮调音量。</summary>
+    public bool MediaBarWheelVolume { get; set; } = true;
+    /// <summary>音量 OSD 指示反馈。</summary>
+    public bool MediaBarOsd { get; set; } = true;
+    /// <summary>媒体条内联频谱条（嵌入模式显示小频谱）。</summary>
+    public bool MediaBarInlineSpectrum { get; set; } = true;
 
     // ---- 桌面歌词 ----
     public bool LyricsEnabled { get; set; }
@@ -120,6 +150,8 @@ public sealed class AppSettings
     /// <summary>桌宠总开关。</summary>
     public bool PetEnabled { get; set; }
     public double PetScale { get; set; } = 1.0;
+    /// <summary>桌宠按键音效（猫拍键时的轻响，默认开）。</summary>
+    public bool PetKeySound { get; set; } = true;
 
     /// <summary>AI 伙伴总开关（默认关闭，需用户配置 key 后启用）。</summary>
     public bool AiEnabled { get; set; }

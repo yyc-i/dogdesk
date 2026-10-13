@@ -20,6 +20,7 @@ public sealed class LyricsOverlayWindow : Window
     private readonly TextBlock _current;
     private readonly TextBlock _currentDim;
     private readonly TextBlock _next;
+    private readonly TextBlock _translation;
     private readonly Border _clipHost;
     private readonly DispatcherTimer _timer;
 
@@ -86,9 +87,19 @@ public sealed class LyricsOverlayWindow : Window
                     Opacity = 0.6,
                     TextAlignment = TextAlignment.Center,
                 },
+                new TextBlock
+                {
+                    Text = "",
+                    FontSize = 13,
+                    Foreground = DimBrush,
+                    Opacity = 0.8,
+                    FontStyle = FontStyle.Italic,
+                    TextAlignment = TextAlignment.Center,
+                },
             },
         };
         _next = (TextBlock)panel.Children[1];
+        _translation = (TextBlock)panel.Children[2];
 
         Content = new Border
         {
@@ -175,6 +186,7 @@ public sealed class LyricsOverlayWindow : Window
                 _currentDim.Text = "♪";
                 _current.Text = "";
                 _next.Text = "";
+                _translation.Text = "";
                 _clipHost.Width = 0;
             }
             return;
@@ -196,6 +208,7 @@ public sealed class LyricsOverlayWindow : Window
             _currentDim.Text = "♪";
             _current.Text = "";
             _next.Text = "";
+            _translation.Text = "";
             _clipHost.Width = 0;
             return;
         }
@@ -207,7 +220,20 @@ public sealed class LyricsOverlayWindow : Window
         _currentDim.Text = text;
         _current.Text = text;
         _next.Text = idx + 1 < lines.Count ? Clean(lines[idx + 1].Text) : "";
+        _translation.Text = ExtractTranslation(lines[idx]);
         _clipHost.Width = 0;
+    }
+
+    /// <summary>尽力读取译文字段（ChineseTranslation）；无则空串。</summary>
+    private static string ExtractTranslation(ILineInfo line)
+    {
+        try
+        {
+            var prop = line.GetType().GetProperty("ChineseTranslation");
+            string? t = prop?.GetValue(line) as string;
+            return string.IsNullOrWhiteSpace(t) ? "" : t.Trim();
+        }
+        catch { return ""; }
     }
 
     private void UpdateSweep(double tMs)

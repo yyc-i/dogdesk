@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <!-- 跨平台共享核心库（模型/设置/歌词/频谱数学/播放队列/在线音源/均衡器） -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
     <ProjectReference Include="..\DogDesk.Core\DogDesk.Core.csproj" />
     <!-- WASAPI loopback 音频捕获 + FFT（频谱壁纸联动） -->
     <PackageReference Include="Endpne.LibMPV.Windows" Version="0.41.0" />
@@ -43,9 +44,7 @@
 
   <ItemGroup>
     <!-- 包自带 targets 的 glob 展开在本环境未生效，显式把 libmpv 复制到输出目录 libmpv\win-x64\ -->
-    <Content Include="$(NuGetPackageRoot)endpne.libmpv.windows/0.41.0/build/x64/libmpv-2.dll"
-             Link="libmpv\win-x64\libmpv-2.dll"
-             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(NuGetPackageRoot)endpne.libmpv.windows/0.41.0/build/x64/libmpv-2.dll" Link="libmpv\win-x64\libmpv-2.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

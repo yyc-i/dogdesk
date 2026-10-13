@@ -1,334 +1,186 @@
-using System.Globalization;
 using Avalonia.Controls;
-using Avalonia.Data.Converters;
 using Avalonia.Input;
-using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
-using DogDesk.Models;
-using DogDesk.Services.Download;
+using DogDesk.Services.Downloads;
 
 namespace DogDesk.Mac.Views;
 
 /// <summary>
-/// 下载管理 Tab（v0.8）：仅负责 UI 接线，下载内核由 <see cref="DownloadManager"/>（DogDesk.Core）实现。
-/// 所有用户操作均经 <see cref="AppServices.Downloads"/> 转发；异常一律吞掉并在页内 Toast 提示。
+/// 下载管理 Tab（v0.8）：UI 接线，内核为 Core 的 DownloadManager（aria2）。
+/// 仅对接 Core 已实现的简版 API（Start/Pause/Resume/Cancel/Retry/Remove + TaskChanged）。
 /// </summary>
 public partial class MainWindow
 {
-    private readonly DispatcherTimer _clipboardTimer = new();
-    private readonly DispatcherTimer _downloadToastTimer = new();
-    private string? _pendingClipUrl;
-    private string? _lastClipboardText;
-
-    /// <summary>并发档位与设置值的映射（索引即 ComboBox SelectedIndex）。</summary>
-    private static readonly int[] ConcurrencyOptions = { 1, 2, 3, 4, 6, 8, 16 };
-    /// <summary>限速档位（KiB/s），与 DownloadLimitBox 顺序一致。</summary>
-    private static readonly long[] LimitOptions = { 0, 512, 1024, 2048, 5120, 10240, 20480, 51200 };
-
-    // ============ 初始化 ============
     private void InitDownloadTab()
     {
-        // —— 设置回填（抑制事件，避免触发保存）——
+        DownloadList.ItemsSource = _dlTasks;
         var s = _app.Settings.Current;
+
+        // aria2 状态
+        Aria2StatusText.Text = _app.Downloads.Available
+            ? $"aria2 已就绪：{_app.Downloads.Aria2Path}"
+            : "aria2 未安装 → brew install aria2";
+
+        // 设置回填
+        int[] concs = { 1, 2, 3, 4, 6, 8, 16 };
+        long[] speeds = { 0, 512, 1024, 2048, 5120, 10240, 20480, 51200 };
         _suppressEvents = true;
-        int ci = Array.IndexOf(ConcurrencyOptions, s.DownloadMaxConcurrent);
-        DownloadConcurrencyBox.SelectedIndex = ci < 0 ? 2 : ci; // 默认 3
-        int li = Array.IndexOf(LimitOptions, s.DownloadMaxSpeedKib);
-        DownloadLimitBox.SelectedIndex = li < 0 ? 0 : li; // 默认不限
+        DownloadConcurrencyBox.SelectedIndex = Math.Max(0, Array.IndexOf(concs, s.DownloadMaxConcurrent));
+        DownloadLimitBox.SelectedIndex = Math.Max(0, Array.IndexOf(speeds, s.DownloadMaxSpeedKib));
         ClipWatchSwitch.IsChecked = s.DownloadClipboardWatch;
         NotifySwitch.IsChecked = s.DownloadNotifyComplete;
         DownloadDirBox.Text = s.DownloadDir;
         _suppressEvents = false;
 
-        // —— 任务列表与内核状态 ——
-        DownloadList.ItemsSource = _app.Downloads.Tasks;
-        RefreshDownloadUi();
+        // 已有任务
+        foreach (var t in _app.Downloads.Tasks) _dlTasks.Add(new DlTaskViewModel(t));
+        DownloadEmptyText.IsVisible = _dlTasks.Count == 0;
 
-        _app.Downloads.StateChanged += () => Dispatcher.UIThread.Post(RefreshDownloadUi);
-        _app.Downloads.TaskCompleted += task =>
-            Dispatcher.UIThread.Post(() => OnDownloadTaskCompleted(task));
-        _app.Downloads.Tasks.CollectionChanged += (_, _) =>
-            Dispatcher.UIThread.Post(RefreshDownloadUi);
-        ClipboardLinkWatcher.LinkDetected += url =>
-            Dispatcher.UIThread.Post(() => ShowClipBanner(url));
-
-        // —— 剪贴板轮询（1s）——
-        _clipboardTimer.Interval = TimeSpan.FromSeconds(1);
-        _clipboardTimer.Tick += async (_, _) => await PollClipboardAsync();
-        if (ClipWatchSwitch.IsChecked == true) _clipboardTimer.Start();
-        Closed += (_, _) => _clipboardTimer.Stop();
-
-        // —— Toast 3s 自动隐藏 ——
-        _downloadToastTimer.Interval = TimeSpan.FromSeconds(3);
-        _downloadToastTimer.Tick += (_, _) =>
+        _app.Downloads.TaskChanged += task => Dispatcher.UIThread.Post(() =>
         {
-            _downloadToastTimer.Stop();
-            DownloadToast.IsVisible = false;
-        };
-
-        // —— 异步初始化 aria2 内核 ——
-        Aria2StatusText.Text = "正在检测 aria2 内核…";
-        CopyBrewBtn.IsVisible = true;
-        _ = InitDownloadCoreAsync();
+            var vm = _dlTasks.FirstOrDefault(v => v.Id == task.Id);
+            if (vm is null) _dlTasks.Insert(0, new DlTaskViewModel(task));
+            else { int i = _dlTasks.IndexOf(vm); _dlTasks[i] = new DlTaskViewModel(task); }
+            DownloadEmptyText.IsVisible = _dlTasks.Count == 0;
+            RefreshDownloadStatus();
+            if (s.DownloadNotifyComplete && task.Status == DownloadStatus.Completed)
+                ShowDownloadToast($"下载完成：{vm?.FileName ?? task.Url}");
+        });
+        RefreshDownloadStatus();
     }
 
-    private async Task InitDownloadCoreAsync()
+    private void RefreshDownloadStatus()
     {
-        try
-        {
-            await _app.Downloads.InitializeAsync();
-        }
-        catch (Exception ex)
-        {
-            Aria2StatusText.Text = $"aria2 初始化异常：{ex.Message}";
-            return;
-        }
-        finally
-        {
-            // 无论成败，都把内核状态文案与「复制安装命令」按钮对齐到真实状态
-            Aria2StatusText.Text = _app.Downloads.Aria2StatusText;
-            CopyBrewBtn.IsVisible = !_app.Downloads.Aria2Available;
-        }
-        RefreshDownloadUi();
-    }
-
-    // ============ 状态刷新 ============
-    private void RefreshDownloadUi()
-    {
-        var dl = _app.Downloads;
-        int active = 0;
-        double totalBps = 0;
-        foreach (var t in dl.Tasks)
-        {
-            if (t.Status == DownloadStatus.Downloading)
-            {
-                active++;
-                totalBps += t.SpeedBps;
-            }
-        }
+        int active = _dlTasks.Count(v => v.Status == DownloadStatus.Downloading);
+        double totalKb = _dlTasks.Where(v => v.Status == DownloadStatus.Downloading)
+                                .Sum(v => v.Task.SpeedBps) / 1024.0;
         DownloadStatusText.Text =
-            $"共 {dl.Tasks.Count} 个任务 · {active} 个下载中 · 总速度 {FormatSpeed(totalBps)}" +
-            (dl.Aria2Available ? "" : " · aria2 未就绪，任务将排队等待");
-        DownloadEmptyText.IsVisible = dl.Tasks.Count == 0;
+            $"任务 {_dlTasks.Count} · 活跃 {active} · 总速 {totalKb:0.0} KB/s" +
+            (_app.Downloads.Available ? "" : " · aria2 未就绪");
     }
 
-    private static string FormatSpeed(double bps)
+    private void ShowDownloadToast(string msg)
     {
-        if (bps < 1024) return $"{bps:0} B/s";
-        if (bps < 1024.0 * 1024) return $"{bps / 1024:0.0} KiB/s";
-        return $"{bps / 1024.0 / 1024:0.0} MiB/s";
-    }
-
-    private void OnDownloadTaskCompleted(DownloadTask task)
-    {
-        RefreshDownloadUi();
-        if (NotifySwitch.IsChecked == true)
-            ShowDownloadToast($"下载完成：{task.FileName}");
-    }
-
-    private void ShowDownloadToast(string text)
-    {
-        DownloadToastText.Text = text;
+        DownloadToastText.Text = msg;
         DownloadToast.IsVisible = true;
-        _downloadToastTimer.Stop();
-        _downloadToastTimer.Start();
+        var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        t.Tick += (_, _) => { DownloadToast.IsVisible = false; t.Stop(); };
+        t.Start();
     }
 
-    // ============ 添加下载 ============
-    private async void DownloadAdd_Click(object? sender, RoutedEventArgs e) =>
-        await AddDownloadFromUrl(DownloadUrlBox.Text?.Trim());
+    // ============ 新建下载 ============
+    private void DownloadAdd_Click(object? sender, RoutedEventArgs e) => AddDownloadFromInput();
 
     private void DownloadUrl_KeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter)
-        {
-            e.Handled = true;
-            _ = AddDownloadFromUrl(DownloadUrlBox.Text?.Trim());
-        }
+        if (e.Key == Key.Enter) { e.Handled = true; AddDownloadFromInput(); }
     }
 
-    private async Task AddDownloadFromUrl(string? url)
+    private void AddDownloadFromInput()
     {
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            ShowDownloadToast("请输入有效的下载链接");
-            return;
-        }
-        string? dir = string.IsNullOrWhiteSpace(DownloadDirBox.Text) ? null : DownloadDirBox.Text.Trim();
-        string? name = string.IsNullOrWhiteSpace(DownloadNameBox.Text) ? null : DownloadNameBox.Text.Trim();
+        string url = (DownloadUrlBox.Text ?? "").Trim();
+        if (string.IsNullOrEmpty(url)) return;
+        string dir = (DownloadDirBox.Text ?? "").Trim();
+        string name = (DownloadNameBox.Text ?? "").Trim();
         try
         {
-            await _app.Downloads.AddTaskAsync(url, dir, name);
+            var task = _app.Downloads.Start(url, dir, string.IsNullOrEmpty(name) ? null : name);
             DownloadUrlBox.Text = "";
             DownloadNameBox.Text = "";
-            RefreshDownloadUi();
+            EnvStatusLabel.Text = task.IsValidUrl ? "已加入下载" : "链接无效";
         }
-        catch (ArgumentException ex)
-        {
-            ShowDownloadToast($"添加失败：{ex.Message}");
-        }
-        catch (Exception ex)
-        {
-            ShowDownloadToast($"添加异常：{ex.Message}");
-        }
+        catch (Exception ex) { EnvStatusLabel.Text = $"添加失败：{ex.Message}"; }
     }
 
     private async void DownloadBrowse_Click(object? sender, RoutedEventArgs e)
     {
-        var dir = await StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
-        {
-            Title = "选择下载保存目录",
-            AllowMultiple = false,
-        });
-        if (dir.Count > 0)
-            DownloadDirBox.Text = dir[0].Path.LocalPath;
+        var dir = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "选择保存目录" });
+        if (dir.Count > 0) DownloadDirBox.Text = dir[0].Path.LocalPath;
     }
 
-    // ============ 任务操作按钮 ============
-    private static DownloadTask? TaskFromSender(object? sender) =>
-        (sender as Control)?.DataContext as DownloadTask;
-
-    private async void TaskPause_Click(object? sender, RoutedEventArgs e)
-    {
-        if (TaskFromSender(sender) is { } t)
-            try { await _app.Downloads.PauseAsync(t); } catch (Exception ex) { ShowDownloadToast(ex.Message); }
-    }
-
-    private async void TaskResume_Click(object? sender, RoutedEventArgs e)
-    {
-        if (TaskFromSender(sender) is { } t)
-            try { await _app.Downloads.ResumeAsync(t); } catch (Exception ex) { ShowDownloadToast(ex.Message); }
-    }
-
-    private async void TaskCancel_Click(object? sender, RoutedEventArgs e)
-    {
-        if (TaskFromSender(sender) is { } t)
-            try { await _app.Downloads.CancelAsync(t); } catch (Exception ex) { ShowDownloadToast(ex.Message); }
-    }
-
-    private async void TaskRetry_Click(object? sender, RoutedEventArgs e)
-    {
-        if (TaskFromSender(sender) is { } t)
-            try { await _app.Downloads.RetryAsync(t); } catch (Exception ex) { ShowDownloadToast(ex.Message); }
-    }
-
-    private void TaskOpenFolder_Click(object? sender, RoutedEventArgs e)
-    {
-        if (TaskFromSender(sender) is { } t)
-            try { _app.Downloads.OpenContainingFolder(t); } catch (Exception ex) { ShowDownloadToast(ex.Message); }
-    }
-
-    // ============ 并发 / 限速 ============
-    private async void DownloadConcurrency_Changed(object? sender, SelectionChangedEventArgs e)
-    {
-        if (_suppressEvents || DownloadConcurrencyBox.SelectedIndex < 0) return;
-        int v = ConcurrencyOptions[DownloadConcurrencyBox.SelectedIndex];
-        _app.Settings.Current.DownloadMaxConcurrent = v;
-        _app.Settings.Save();
-        try { await _app.Downloads.SetConcurrencyAsync(v); } catch { }
-    }
-
-    private async void DownloadLimit_Changed(object? sender, SelectionChangedEventArgs e)
-    {
-        if (_suppressEvents || DownloadLimitBox.SelectedIndex < 0) return;
-        long kib = LimitOptions[DownloadLimitBox.SelectedIndex];
-        _app.Settings.Current.DownloadMaxSpeedKib = kib;
-        _app.Settings.Save();
-        try { await _app.Downloads.SetGlobalLimitAsync(kib); } catch { }
-    }
-
-    // ============ 开关 ============
-    private void ClipWatch_Toggled(object? sender, RoutedEventArgs e)
+    // ============ 设置 ============
+    private void DownloadConcurrency_Changed(object? sender, SelectionChangedEventArgs e)
     {
         if (_suppressEvents) return;
-        bool on = ClipWatchSwitch.IsChecked == true;
-        _app.Settings.Current.DownloadClipboardWatch = on;
+        int[] concs = { 1, 2, 3, 4, 6, 8, 16 };
+        if (DownloadConcurrencyBox.SelectedIndex >= 0 && DownloadConcurrencyBox.SelectedIndex < concs.Length)
+        {
+            _app.Settings.Current.DownloadMaxConcurrent = concs[DownloadConcurrencyBox.SelectedIndex];
+            _app.Downloads.MaxConcurrent = _app.Settings.Current.DownloadMaxConcurrent;
+            _app.Settings.Save();
+        }
+    }
+
+    private void DownloadLimit_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressEvents) return;
+        long[] speeds = { 0, 512, 1024, 2048, 5120, 10240, 20480, 51200 };
+        if (DownloadLimitBox.SelectedIndex >= 0 && DownloadLimitBox.SelectedIndex < speeds.Length)
+        {
+            _app.Settings.Current.DownloadMaxSpeedKib = speeds[DownloadLimitBox.SelectedIndex];
+            _app.Downloads.MaxSpeedKb = _app.Settings.Current.DownloadMaxSpeedKib;
+            _app.Settings.Save();
+        }
+    }
+
+    private void ClipWatch_Toggled(object? sender, RoutedEventArgs e)
+    {
+        _app.Settings.Current.DownloadClipboardWatch = ClipWatchSwitch.IsChecked == true;
         _app.Settings.Save();
-        if (on) _clipboardTimer.Start();
-        else { _clipboardTimer.Stop(); ClipBanner.IsVisible = false; }
+        EnvStatusLabel.Text = "剪贴板监听设置已保存（macOS 自动捕获需轮询桥接，本版未启用）";
     }
 
     private void Notify_Toggled(object? sender, RoutedEventArgs e)
     {
-        if (_suppressEvents) return;
         _app.Settings.Current.DownloadNotifyComplete = NotifySwitch.IsChecked == true;
         _app.Settings.Save();
     }
 
-    // ============ aria2 安装命令复制 ============
-    private async void CopyBrew_Click(object? sender, RoutedEventArgs e)
-    {
-        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
-        if (clipboard is null) return;
-        try
-        {
-            await clipboard.SetTextAsync("brew install aria2");
-            ShowDownloadToast("已复制：brew install aria2（终端粘贴执行即可）");
-        }
-        catch { /* 剪贴板写入失败忽略 */ }
-    }
+    private void CopyBrew_Click(object? sender, RoutedEventArgs e)
+        => ShowDownloadToast("请在终端执行：brew install aria2");
 
-    // ============ 剪贴板监听 ============
-    private async Task PollClipboardAsync()
-    {
-        try
-        {
-            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
-            if (clipboard is null) return;
-            string? text = await clipboard.TryGetTextAsync();
-            if (string.IsNullOrWhiteSpace(text) || text == _lastClipboardText) return;
-            _lastClipboardText = text;
-            ClipboardLinkWatcher.OfferText(text);
-        }
-        catch { /* 剪贴板访问失败忽略 */ }
-    }
+    private void ClipAdd_Click(object? sender, RoutedEventArgs e) { ClipBanner.IsVisible = false; }
+    private void ClipIgnore_Click(object? sender, RoutedEventArgs e) { ClipBanner.IsVisible = false; }
 
-    private void ShowClipBanner(string url)
-    {
-        _pendingClipUrl = url;
-        ClipUrlText.Text = url;
-        ClipBanner.IsVisible = true;
-    }
+    // ============ 任务操作（DataTemplate 按钮，DataContext=DlTaskViewModel） ============
+    private static DlTaskViewModel? Vm(object? sender) => (sender as Control)?.DataContext as DlTaskViewModel;
 
-    private async void ClipAdd_Click(object? sender, RoutedEventArgs e)
-    {
-        ClipBanner.IsVisible = false;
-        string? url = _pendingClipUrl;
-        _pendingClipUrl = null;
-        if (!string.IsNullOrWhiteSpace(url))
-            await AddDownloadFromUrl(url);
-    }
+    private void TaskPause_Click(object? sender, RoutedEventArgs e)
+    { var vm = Vm(sender); if (vm is not null) _app.Downloads.Pause(vm.Id); }
 
-    private void ClipIgnore_Click(object? sender, RoutedEventArgs e)
-    {
-        ClipBanner.IsVisible = false;
-        _pendingClipUrl = null;
-    }
+    private void TaskResume_Click(object? sender, RoutedEventArgs e)
+    { var vm = Vm(sender); if (vm is not null) _app.Downloads.Resume(vm.Id); }
+
+    private void TaskCancel_Click(object? sender, RoutedEventArgs e)
+    { var vm = Vm(sender); if (vm is not null) _app.Downloads.Cancel(vm.Id); }
+
+    private void TaskRetry_Click(object? sender, RoutedEventArgs e)
+    { var vm = Vm(sender); if (vm is not null) _app.Downloads.Retry(vm.Id); }
+
+    private void TaskOpenFolder_Click(object? sender, RoutedEventArgs e)
+    { var vm = Vm(sender); if (vm is not null) ShowDownloadToast($"目录：{vm.Task.SaveDir}"); }
 }
 
-/// <summary>
-/// 把 <see cref="DownloadStatus"/> 映射为按钮可见性（ConverterParameter: Pause/Resume/Cancel/Retry/Open）。
-/// </summary>
-public sealed class DownloadStatusToVisibilityConverter : IValueConverter
+/// <summary>按下载状态决定操作按钮是否可见（ConverterParameter=Pause/Resume/Cancel/Retry/Open）。</summary>
+public sealed class DownloadStatusToVisibilityConverter : Avalonia.Data.Converters.IValueConverter
 {
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
-        if (value is not DownloadStatus status) return true;
-        string? mode = parameter as string;
-        return mode switch
+        if (value is not DownloadStatus st) return false;
+        string? op = parameter as string;
+        return op switch
         {
-            "Pause" => status == DownloadStatus.Downloading || status == DownloadStatus.Waiting,
-            "Resume" => status == DownloadStatus.Paused || status == DownloadStatus.Failed,
-            "Cancel" => status == DownloadStatus.Waiting
-                        || status == DownloadStatus.Downloading
-                        || status == DownloadStatus.Paused,
-            "Retry" => status == DownloadStatus.Failed,
-            "Open" => status == DownloadStatus.Completed,
-            _ => true,
+            "Pause" => st is DownloadStatus.Downloading or DownloadStatus.Pending,
+            "Resume" => st is DownloadStatus.Paused or DownloadStatus.Failed or DownloadStatus.Canceled,
+            "Cancel" => st is DownloadStatus.Downloading or DownloadStatus.Pending or DownloadStatus.Paused,
+            "Retry" => st is DownloadStatus.Failed or DownloadStatus.Canceled,
+            "Open" => st == DownloadStatus.Completed,
+            _ => false,
         };
     }
 
-    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        throw new NotSupportedException();
+    public object ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+        => Avalonia.Data.BindingOperations.DoNothing;
 }

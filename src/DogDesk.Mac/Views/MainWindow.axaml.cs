@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<MediaItem> _playlistItems = new();
     private readonly ObservableCollection<ChatBubble> _chat = new();
     private readonly ObservableCollection<BootAnimEntry> _bootLib = new();
+    private readonly ObservableCollection<DlTaskViewModel> _dlTasks = new();
 
     private readonly DispatcherTimer _uiTimer;
     private readonly LyricsOverlayWindow _lyricsWindow;

@@ -10,13 +10,15 @@
         ResizeMode="NoResize"
         Width="360"
         Height="56"
-        Focusable="False">
+        Focusable="False"
+        xmlns:views="clr-namespace:DogDesk.Views">
   <Border x:Name="RootBorder"
           CornerRadius="12"
           Background="#E619212E"
           BorderBrush="#2EFFFFFF"
           BorderThickness="1">
     <Grid>
+      <Grid Margin="0,0,0,8">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="*"/>
@@ -67,12 +69,23 @@
         </Border>
       </Grid>
 
+      <!-- 两行歌词（LyricsDualLine / MediaBarDualLyrics 控制） -->
+      <StackPanel x:Name="LyricPanel" Grid.Column="1" VerticalAlignment="Center" Margin="0,0,0,0"
+                  Visibility="Collapsed">
+        <TextBlock x:Name="LyricCurrent" Foreground="#F1F5F9" FontSize="12" TextTrimming="CharacterEllipsis"/>
+        <TextBlock x:Name="LyricNext" Foreground="#7C8698" FontSize="10" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+      </StackPanel>
+
       <!-- 控制按钮 -->
       <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,8,0">
         <Button x:Name="PrevButton" Style="{StaticResource MediaBarButton}" Content="&#x23EE;" ToolTip="上一首" Click="OnPrevClick"/>
         <Button x:Name="PlayButton" Style="{StaticResource MediaBarButton}" Content="&#x25B6;" ToolTip="播放 / 暂停" Click="OnPlayPauseClick"/>
         <Button x:Name="NextButton" Style="{StaticResource MediaBarButton}" Content="&#x23ED;" ToolTip="下一首" Click="OnNextClick"/>
       </StackPanel>
+      </Grid>
+    <!-- 内联频谱条（MediaBarInlineSpectrum 控制） -->
+    <views:SpectrumBarsControl x:Name="InlineSpectrum" Height="10" VerticalAlignment="Bottom"
+                               Margin="8,0,8,0" Visibility="Collapsed"/>
     </Grid>
   </Border>
 </Window>
