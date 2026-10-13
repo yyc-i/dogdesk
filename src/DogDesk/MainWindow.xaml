@@ -1,6 +1,7 @@
 <Window x:Class="DogDesk.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:DogDesk.Models;assembly=DogDesk.Core"
         Title="dogdesk · 控制台"
         Width="720"
         Height="820"
@@ -782,6 +783,194 @@
                 <TextBlock x:Name="BootStatusText" Text="" FontSize="12" Margin="0,8,0,0" Foreground="{StaticResource TextSecondary}"/>
               </StackPanel>
             </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ============ 下载（v0.8） ============ -->
+      <TabItem Header="下载" Style="{StaticResource PanelTabItem}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="2,0,6,8">
+
+            <!-- 新建下载卡片 -->
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16">
+              <StackPanel>
+                <TextBlock Text="新建下载（aria2 多线程加速）" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <TextBox x:Name="DownloadUrlBox" Style="{StaticResource PanelTextBox}" Margin="0,0,0,6" Tag="粘贴 http/https 链接，如 https://example.com/file.zip"/>
+                <Grid Margin="0,0,0,6">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBox x:Name="DownloadDirBox" Style="{StaticResource PanelTextBox}" Tag="保存目录（留空=默认下载目录）"/>
+                  <Button Grid.Column="1" x:Name="DownloadBrowseBtn" Style="{StaticResource PanelButton}" Content="浏览…" Margin="8,0,0,0" Padding="12,6" Click="OnDownloadBrowseClick"/>
+                </Grid>
+                <TextBox x:Name="DownloadNameBox" Style="{StaticResource PanelTextBox}" Margin="0,0,0,6" Tag="保存文件名（留空=自动命名）"/>
+                <Button x:Name="DownloadAddBtn" Style="{StaticResource PanelButton}" Content="添加下载" Padding="16,8" Click="OnDownloadAddClick"/>
+              </StackPanel>
+            </Border>
+
+            <!-- 设置卡片 -->
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,12,0,0">
+              <StackPanel>
+                <TextBlock Text="下载设置" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                  <TextBlock Text="并发数" Width="80" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                  <ComboBox x:Name="DownloadConcurrencyCombo" Style="{StaticResource PanelComboBox}" Width="120" SelectionChanged="OnDownloadConcurrencyChanged">
+                    <ComboBoxItem Content="1" Tag="1"/>
+                    <ComboBoxItem Content="2" Tag="2"/>
+                    <ComboBoxItem Content="3" Tag="3"/>
+                    <ComboBoxItem Content="4" Tag="4"/>
+                    <ComboBoxItem Content="6" Tag="6"/>
+                    <ComboBoxItem Content="8" Tag="8"/>
+                    <ComboBoxItem Content="16" Tag="16"/>
+                  </ComboBox>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                  <TextBlock Text="全局限速" Width="80" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                  <ComboBox x:Name="DownloadLimitCombo" Style="{StaticResource PanelComboBox}" Width="160" SelectionChanged="OnDownloadLimitChanged">
+                    <ComboBoxItem Content="不限" Tag="0"/>
+                    <ComboBoxItem Content="512K" Tag="512"/>
+                    <ComboBoxItem Content="1M" Tag="1024"/>
+                    <ComboBoxItem Content="2M" Tag="2048"/>
+                    <ComboBoxItem Content="5M" Tag="5120"/>
+                    <ComboBoxItem Content="10M" Tag="10240"/>
+                    <ComboBoxItem Content="20M" Tag="20480"/>
+                    <ComboBoxItem Content="50M" Tag="51200"/>
+                  </ComboBox>
+                </StackPanel>
+                <CheckBox x:Name="ClipWatchCheck" Style="{StaticResource PanelCheckBox}" Content="监听剪贴板链接（默认关，检测到 http(s) 链接时提示添加到下载）" Margin="0,0,0,6" Checked="OnClipWatchChanged" Unchecked="OnClipWatchChanged"/>
+                <CheckBox x:Name="NotifyCheck" Style="{StaticResource PanelCheckBox}" Content="下载完成通知（托盘气泡）" Checked="OnNotifyCheckChanged" Unchecked="OnNotifyCheckChanged"/>
+              </StackPanel>
+            </Border>
+
+            <!-- 剪贴板横幅（默认隐藏） -->
+            <Border x:Name="ClipBanner" Background="#2A2F45" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="10" Padding="12,10" Margin="0,12,0,0" Visibility="Collapsed">
+              <StackPanel>
+                <TextBlock Text="检测到剪贴板中的下载链接：" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,4"/>
+                <TextBlock x:Name="ClipUrlText" Text="" FontSize="12" Foreground="{StaticResource TextPrimary}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <StackPanel Orientation="Horizontal">
+                  <Button x:Name="ClipAddBtn" Style="{StaticResource PanelButton}" Content="添加到下载" Padding="14,5" Click="OnClipAddClick"/>
+                  <Button x:Name="ClipIgnoreBtn" Style="{StaticResource PanelButton}" Content="忽略" Margin="8,0,0,0" Padding="14,5" Click="OnClipIgnoreClick"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- 任务列表卡片 -->
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,12,0,0">
+              <StackPanel>
+                <TextBlock Text="任务列表" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <DataGrid x:Name="DownloadGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                          HeadersVisibility="Column" GridLinesVisibility="None" BorderThickness="0"
+                          Background="#12141C" RowBackground="#1B1E2A" Foreground="{StaticResource TextPrimary}"
+                          RowHeight="36" Height="280" Margin="0,4,0,0">
+                  <DataGrid.Resources>
+                    <Style x:Key="DgHeader" TargetType="DataGridColumnHeader">
+                      <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+                      <Setter Property="Background" Value="#12141C"/>
+                      <Setter Property="Padding" Value="8,6"/>
+                      <Setter Property="FontSize" Value="12"/>
+                      <Setter Property="BorderThickness" Value="0"/>
+                    </Style>
+                    <Style x:Key="DgCell" TargetType="DataGridCell">
+                      <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                      <Setter Property="Template">
+                        <Setter.Value>
+                          <ControlTemplate TargetType="DataGridCell">
+                            <Border Background="{TemplateBinding Background}" Padding="6,0">
+                              <ContentPresenter VerticalAlignment="Center"/>
+                            </Border>
+                          </ControlTemplate>
+                        </Setter.Value>
+                      </Setter>
+                    </Style>
+                  </DataGrid.Resources>
+                  <DataGrid.Columns>
+                    <DataGridTextColumn Header="文件名" Binding="{Binding FileName}" Width="150" ElementStyle="{StaticResource DgCell}" HeaderStyle="{StaticResource DgHeader}"/>
+                    <DataGridTextColumn Header="大小" Binding="{Binding SizeText}" Width="70" ElementStyle="{StaticResource DgCell}" HeaderStyle="{StaticResource DgHeader}"/>
+                    <DataGridTemplateColumn Header="进度" Width="*" HeaderStyle="{StaticResource DgHeader}">
+                      <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                          <ProgressBar Value="{Binding ProgressPercent}" Maximum="100" Height="12" Foreground="{StaticResource AccentBrush}" Background="#2A2F45"/>
+                        </DataTemplate>
+                      </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="速度" Binding="{Binding SpeedText}" Width="80" ElementStyle="{StaticResource DgCell}" HeaderStyle="{StaticResource DgHeader}"/>
+                    <DataGridTextColumn Header="用时" Binding="{Binding ElapsedText}" Width="70" ElementStyle="{StaticResource DgCell}" HeaderStyle="{StaticResource DgHeader}"/>
+                    <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="70" ElementStyle="{StaticResource DgCell}" HeaderStyle="{StaticResource DgHeader}"/>
+                    <DataGridTemplateColumn Header="操作" Width="Auto" HeaderStyle="{StaticResource DgHeader}">
+                      <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                          <StackPanel Orientation="Horizontal">
+                            <Button Content="暂停" Margin="0,0,4,0" Padding="6,2" FontSize="12" Click="OnRowPauseClick">
+                              <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PanelButton}">
+                                  <Setter Property="Visibility" Value="Collapsed"/>
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Downloading}"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Waiting}"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </Button.Style>
+                            </Button>
+                            <Button Content="恢复" Margin="0,0,4,0" Padding="6,2" FontSize="12" Click="OnRowResumeClick">
+                              <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PanelButton}">
+                                  <Setter Property="Visibility" Value="Collapsed"/>
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Paused}"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </Button.Style>
+                            </Button>
+                            <Button Content="取消" Margin="0,0,4,0" Padding="6,2" FontSize="12" Click="OnRowCancelClick">
+                              <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PanelButton}">
+                                  <Setter Property="Visibility" Value="Collapsed"/>
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Downloading}"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Waiting}"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Paused}"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Failed}"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </Button.Style>
+                            </Button>
+                            <Button Content="重试" Margin="0,0,4,0" Padding="6,2" FontSize="12" Click="OnRowRetryClick">
+                              <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PanelButton}">
+                                  <Setter Property="Visibility" Value="Collapsed"/>
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Failed}"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </Button.Style>
+                            </Button>
+                            <Button Content="打开文件夹" Padding="6,2" FontSize="12" Click="OnRowOpenFolderClick">
+                              <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PanelButton}">
+                                  <Setter Property="Visibility" Value="Collapsed"/>
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Completed}"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </Button.Style>
+                            </Button>
+                          </StackPanel>
+                        </DataTemplate>
+                      </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                  </DataGrid.Columns>
+                </DataGrid>
+                <TextBlock x:Name="DownloadEmptyText" Text="暂无下载任务，粘贴一个 http/https 链接开始吧"
+                           FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+
+            <!-- 状态行 -->
+            <TextBlock x:Name="DownloadStatusText" Text="" FontSize="12" Margin="2,10,0,0"
+                       Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+
           </StackPanel>
         </ScrollViewer>
       </TabItem>

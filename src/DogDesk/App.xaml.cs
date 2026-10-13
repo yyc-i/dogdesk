@@ -1,5 +1,6 @@
 using System.Windows;
 using DogDesk.Services;
+using DogDesk.Services.Download;
 using DogDesk.Services.Mpv;
 using DogDesk.Services.MusicSource;
 using DogDesk.Services.Playback;
@@ -38,12 +39,19 @@ public partial class App : System.Windows.Application
     /// <summary>设置持久化服务（JSON）。</summary>
     public SettingsService Settings { get; } = new SettingsService();
 
+    /// <summary>v0.8：下载加速与下载管理（aria2 内核）。</summary>
+    public DownloadManager Downloads { get; }
+
     private TrayService? _tray;
+
+    /// <summary>系统托盘（供下载完成通知等跨模块调用）。</summary>
+    public TrayService? Tray { get; private set; }
 
     public App()
     {
         BuiltinPlayer = new MpvAudioPlayer();
         MediaSession = new MediaSessionRouter(SystemMedia, BuiltinPlayer);
+        Downloads = new DownloadManager(Settings);
     }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -55,7 +63,7 @@ public partial class App : System.Windows.Application
         MpvNativeLoader.TryPreload();
 
         var main = new MainWindow(MediaSession, SystemMedia, BuiltinPlayer, Queue, Netease, Navidrome,
-            Wallpaper, Spectrum, Lyrics, Settings);
+            Wallpaper, Spectrum, Lyrics, Settings, Downloads);
         MainWindow = main;
 
         // 设置要求自启但快捷方式缺失时补建（非侵入：仅启动文件夹）
@@ -64,6 +72,7 @@ public partial class App : System.Windows.Application
 
         // 系统托盘
         _tray = new TrayService();
+        Tray = _tray;
         _tray.RestoreRequested += () => Dispatcher.BeginInvoke(() =>
         {
             main.Show();
@@ -95,6 +104,7 @@ public partial class App : System.Windows.Application
     protected override void OnExit(ExitEventArgs e)
     {
         Settings.Save();
+        Downloads.Shutdown();
         _tray?.Dispose();
         _tray = null;
         Spectrum.Dispose();

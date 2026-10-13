@@ -83,6 +83,9 @@ public partial class MainWindow : Window
             ResumeHint.Text = "已恢复上次播放队列";
 
         RefreshPlaybackUi();
+
+        // v0.8 下载管理 Tab：回填设置、订阅内核事件、异步初始化 aria2
+        InitDownloadTab();
     }
 
     // ============ 电台 / 榜单 ============

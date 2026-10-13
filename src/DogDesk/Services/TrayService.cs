@@ -47,6 +47,9 @@ public sealed class TrayService : IDisposable
             System.Windows.Forms.ToolTipIcon.Info);
     }
 
+    /// <summary>v0.8：下载完成等通知气泡（复用 Balloon）。</summary>
+    public void ShowNotification(string title, string text) => Balloon(title, text);
+
     private System.Drawing.Icon BuildIcon()
     {
         using var bmp = new System.Drawing.Bitmap(32, 32);

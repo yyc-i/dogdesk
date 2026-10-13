@@ -1,14 +1,14 @@
-# DogDesk（v0.7.1）
+# DogDesk（v0.8.0）
 
 仓库：https://github.com/yyc-i/dogdesk  ·  显示名 `dogdesk`（内部标识 DogDesk）。
 
-**任务栏媒体控制条 + WorkerW 动态壁纸 + libmpv 全格式视频 + 多源桌面歌词 + Folia 风格全屏歌词 + Mineradio 风格沉浸播放 + 桌面 AI 桌宠（本地 Ollama 双通道 LLM + 工具调用）+ 自定义开机动画 + 桌面整理 + 系统优化 + macOS 版** —— Windows 10/11 桌面美化与陪伴工具（macOS 版同步提供）。
+**任务栏媒体控制条 + WorkerW 动态壁纸 + libmpv 全格式视频 + 多源桌面歌词 + Folia 风格全屏歌词 + Mineradio 风格沉浸播放 + 桌面 AI 桌宠（本地 Ollama 双通道 LLM + 工具调用）+ 自定义开机动画 + 桌面整理 + 系统优化 + 下载加速与下载管理（aria2 多线程分段）+ macOS 版** —— Windows 10/11 桌面美化与陪伴工具（macOS 版同步提供）。
 
 > 注：v0.5.0 起由 MediaBarWallpaper 更名，旧 `%AppData%\MediaBarWallpaper` 配置（settings.json / deskbox.json）在首次启动时自动迁移到 `%AppData%\DogDesk\`，旧文件保留不删除。
 
-形态参考开源项目 [AF Media Bar](https://github.com/Fervent-Tempo/AF-Media-Bar)（任务栏媒体控制条），并集成动态壁纸能力。v0.5.0 起引入跨平台共享核心库（`DogDesk.Core`），Windows（WPF）与 macOS（Avalonia）双端共用同一套模型/设置/歌词/频谱/播放队列/音源/均衡器/环绕/歌单/电台/记忆播放/LLM 客户端逻辑。
+形态参考开源项目 [AF Media Bar](https://github.com/Fervent-Tempo/AF-Media-Bar)（任务栏媒体控制条），并集成动态壁纸能力。v0.5.0 起引入跨平台共享核心库（`DogDesk.Core`），Windows（WPF）与 macOS（Avalonia）双端共用同一套模型/设置/歌词/频谱/播放队列/音源/均衡器/环绕/歌单/电台/记忆播放/LLM 客户端/下载管理逻辑。
 
-## 功能（v0.7.0）
+## 功能（v0.8.0）
 
 | 模块 | 说明 |
 |---|---|
@@ -24,9 +24,27 @@
 | **AI 角色人设** | 内置 5 种性格预设（元气少女/知性姐姐/冷淡助手/幽默伙伴/猫娘），system prompt 可自定义编辑；对话上下文保留最近 10 轮；TTS 用 Windows 系统语音（SAPI，离线）朗读回复；**STT 按住说话（v0.7.1，Windows）**：SAPI 语音识别（离线、不上传），可用性自动检测（无语言包时降级纯文本并提示） |
 | **ZenDesktop 视觉效果（v0.7，Windows，实验性）** | 系统优化 Tab 新增「视觉效果」分区：Windhawk 液态玻璃 mod 的**一键应用/卸载脚本**（scripts/zen-desktop/apply.ps1、uninstall.ps1，提权执行）；🔴 红风险「修改 Explorer 进程，可能影响稳定性，建议先建还原点」；**默认不勾选、绝不自动注入、仅封装安装/卸载流程，不复制 Windhawk/ZenDesktop 任何 mod 代码**（GPL-3.0） |
 | **自定义开机动画（v0.7/v0.7.1）** | 启动时显示开机动画窗口（居中无边框，Esc/点击/超时自动关，默认开启可关）：**Aurora 极光 / Gradient 渐变呼吸 / FlowText 流光文字 / Particle 粒子星云 / Geometry 几何脉冲 / Image 图片** 六种内置样式；**素材库（v0.7.1）**：`%AppData%\DogDesk\boot-anim\` 支持导入图片/视频、预览、设为当前、删除；**AI 生成素材**（默认关闭+隐私提示）：OpenAI 兼容 images API（用户自备 key）生成图自动入库 |
+| **下载加速与下载管理（v0.8，双端）** | 基于 aria2 子进程 + JSON-RPC：**多线程分段 `-x16 -s16`**、任务管理（暂停/继续/取消/失败重试续传）、队列并发 1–16 运行时可调、全局限速运行时生效、剪贴板 http(s) 链接监听（**默认关闭**）、历史持久化 `tasks.json` + 自动备份 `.bak`、完成通知（托盘/页内 Toast）、AI 桌宠白名单工具 `add_download`（需确认）、**空闲无任务自动回收 daemon 无驻留** |
 | 设置持久化 / 系统托盘 / 开机自启 | `%AppData%\DogDesk\settings.json`；托盘；启动文件夹快捷方式（非侵入） |
 | 控制台 | 深色分页 UI（壁纸/媒体条/桌面歌词/频谱/曲库/在线音源/均衡器/电台榜单/歌单架/桌宠/AI 伙伴/开机动画/桌面整理/系统优化/设置），实时日志；**全局热键 Ctrl+Alt+D 显隐主界面 / Ctrl+Alt+P 切换桌宠**；托盘菜单含桌宠/AI 开关；首次运行显示可关闭引导条 |
-| **macOS 版（v0.7.1）** | Avalonia 11：播放/曲库/在线音源(网易云+Navidrome+电台+榜单)/歌单(封面轮播)/均衡器(环绕+倍速+音质)/AI 伙伴(双通道 LLM 对话)/设置 七 Tab + 置顶桌面歌词 + 全屏流光歌词 + **开机动画（Aurora/Particle/Pulse/FlowText/Image 五样式 + 素材库导入/预览/设为当前/删除 + AI 生成素材）** + 动态配色 + 记忆播放；libmpv 动态加载（`brew install mpv`） |
+| **macOS 版（v0.8.0）** | Avalonia 11：播放/曲库/在线音源(网易云+Navidrome+电台+榜单)/歌单(封面轮播)/均衡器(环绕+倍速+音质)/AI 伙伴(双通道 LLM 对话)/设置/**下载(v0.8)** 八 Tab + 置顶桌面歌词 + 全屏流光歌词 + **开机动画（Aurora/Particle/Pulse/FlowText/Image 五样式 + 素材库导入/预览/设为当前/删除 + AI 生成素材）** + 动态配色 + 记忆播放；libmpv 动态加载（`brew install mpv`）；下载 Tab 同步实现（检测 brew 安装的 aria2c，缺失给安装指引） |
+
+## 下载模块与 aria2 集成（v0.8）
+
+- **功能形态**：主界面新增「下载」Tab（Windows WPF 与 macOS Avalonia 同步实现）：新建下载（URL / 保存目录浏览 / 文件名），任务 DataGrid（文件名 / 大小 / 进度条 / 速度 / 用时 / 状态 / 暂停·继续·取消·重试按钮），并发数 + 限速 + 剪贴板监听 + 完成通知设置，剪贴板横幅提示，空状态与底部状态行；macOS 无托盘，完成通知走页内 Toast。
+- **集成方式**：以**子进程 + JSON-RPC** 方式调用 GPL-2.0 的 aria2 命令行二进制 `aria2c`——**仅调用其 CLI，不含、不复制其源码**：
+  - **Windows**：打包自带 `src/DogDesk/aria2/aria2c.exe`（**v1.37.0**，官方 release `aria2-1.37.0-win-64bit-build1.zip`）及 GPL-2.0 `LICENSE.txt`，用户无需自行安装；
+  - **macOS**：检测 `/opt/homebrew/bin/aria2c`、`/usr/local/bin/aria2c` 与 PATH 中的 `aria2c`，缺失时显示 `brew install aria2` 指引并提供「复制命令」按钮。
+- **运行机制**：daemon 启动参数 `--enable-rpc --rpc-listen-port=6800..6900`（空闲端口）、`--continue=true`、`--split=16`、`--max-connection-per-server=16`、`--rpc-secret`；1s 轮询 `tellActive/tellWaiting/tellStopped`；暂停/恢复/取消走 `aria2.pause/unpause/remove`，失败重试走 `addUri` 续传；并发数（1–16）与全局限速经 `changeGlobalOption` **运行时即时生效**；**空闲且无 Waiting/Downloading 任务时自动结束 daemon，无驻留进程**。
+- **数据存放**：`%AppData%\DogDesk\downloads\tasks.json`（每次变更自动备份 `tasks.json.bak`）。
+- **「下载加速」如实说明**：多线程分段（`-x16 -s16`）**仅对支持多连接/分段的直链显著提速**；实际速度始终受**源站带宽与网络条件限制**，多线程分段**不保证突破源站限速**，不做任何提速倍数承诺。
+
+### 安全边界（v0.8）
+
+- **剪贴板监听默认关闭**（`DownloadClipboardWatch=false`）：开启后**仅在本机识别 http/https 链接**，不上传剪贴板内容、不读取非 URL 文本；识别到链接时弹横幅询问是否新建下载
+- 下载功能**仅用于用户自己的合法链接**；**不提供网盘会员绕过、商业代理加速通道等任何灰色/侵权下载能力**
+- 仅支持 http/https 直链，不支持 BT/磁力
+- AI 桌宠调用 `add_download` 工具属白名单写操作，**需确认弹窗**（RequiresConfirm）后方可执行
 
 ## AI 桌宠安全边界（务必阅读）
 
@@ -59,8 +77,8 @@
 ## macOS 版（Avalonia）
 
 - 技术路线：**Avalonia 11**（官方 WPF 跨平台迁移框架，可在 Linux 交叉发布 osx-x64/osx-arm64）—— 来源：[Avalonia UI for macOS](https://avaloniaui.net/avalonia/macos/)
-- 共享核心库 `DogDesk.Core`（net8.0，无 WPF 依赖）承载模型/设置/歌词/频谱/播放队列/音源/均衡器/环绕/歌单/电台/记忆播放/LLM 双通道逻辑
-- **运行时依赖**：libmpv（`brew install mpv`）；Ollama（`brew install ollama`，AI 本地通道）
+- 共享核心库 `DogDesk.Core`（net8.0，无 WPF 依赖）承载模型/设置/歌词/频谱/播放队列/音源/均衡器/环绕/歌单/电台/记忆播放/LLM 双通道/下载管理逻辑
+- **运行时依赖**：libmpv（`brew install mpv`）；Ollama（`brew install ollama`，AI 本地通道）；aria2（`brew install aria2`，下载 Tab，缺失时应用内给安装指引）
 - **未签名/未公证**：Linux 环境无法签名与 notarization，首次打开需**右键 → 打开**放行 Gatekeeper
 - macOS 版不含：壁纸（需 NSWorkspace）、系统频谱回采（无 WASAPI）、桌宠（Win32 钩子）、ZenDesktop（Windows-only）、TTS/STT（需原生语音桥接）
 
@@ -83,6 +101,7 @@ dotnet publish src/DogDesk.Mac/DogDesk.Mac.csproj -c Release -r osx-arm64 --self
 - **桌面格子**：每屏透明叠加窗 `SetParent` 到 WorkerW；格子为文件链接（不移动原位）
 - **桌宠**：透明无边框置顶窗 + `GetAsyncKeyState` 轮询驱动拍爪动画（非全局钩子，无权限风险）；点击（拖动距离 <4px）弹对话气泡
 - **开机动画**：App 启动时非模态展示（不阻塞主窗口初始化），Esc/点击/超时关闭，`BootAnimEnabled=false` 零创建
+- **下载模块（v0.8）**：`DownloadManager` 拉起 aria2c daemon（端口 6800..6900 空闲端口 + `--rpc-secret`），JSON-RPC `tellActive/tellWaiting/tellStopped` 1s 轮询，`pause/unpause/remove/addUri` 控制任务，`changeGlobalOption` 运行时调并发与限速，无活动任务即杀 daemon；`ClipboardLinkWatcher` 仅本机识别 http(s) 链接（默认关）；`DownloadTask` 模型 + `tasks.json`/`tasks.json.bak` 持久化
 - **媒体条定位**：`FindWindow("Shell_TrayWnd")` → `ComputeAnchor` → `SetWindowPos`
 - **libmpv 集成**：Windows 用 NuGet `Endpne.LibMPV.Windows`；macOS 动态加载系统 `libmpv.dylib`
 - **歌词**：`Lyricify.Lyrics.Helper` 多源检索 + 逐字音节级高亮
@@ -103,6 +122,7 @@ dotnet build src/DogDesk/DogDesk.csproj -c Release
 
 1. 运行 `DogDesk.exe`；首次可勾选「设置 → 开机自启 / 最小化到托盘」；启动动画默认显示（Esc 跳过）
 2. 「壁纸」「频谱」「媒体条」「桌面歌词」「曲库」「在线音源」「均衡器」「电台/榜单」「歌单架」「桌面整理」「系统优化」各页用法同 v0.5–v0.6
+2b. **「下载」页（v0.8）**：新建下载贴入 http(s) 直链 URL、浏览保存目录、可改文件名；任务列表支持暂停/继续/取消/重试；可调队列并发数与全局限速；**剪贴板监听默认关**，需要时在设置中开启；下载完成弹托盘通知
 3. **「桌宠」页**：勾选启用 → 桌面出现卡通猫；敲键盘看拍爪；**点击猫弹出 AI 对话气泡**
 4. **「AI 伙伴」页**：默认本地通道——点「检测 Ollama」，未安装按提示装好并 `ollama pull qwen2.5:7b` 后刷新模型下拉；或切「云端」填 base_url/key/model（默认 doubao-seed-1.6-lite）；选人设、开 TTS/工具开关 → 对话
 5. **「开机动画」页**：选样式（Aurora/Gradient/FlowText/Image）、调时长、「预览」；导入图片做 Image 素材
@@ -110,6 +130,7 @@ dotnet build src/DogDesk/DogDesk.csproj -c Release
 
 ## 已知限制
 
+- **下载模块（v0.8，诚实）**：仅支持 http/https 直链，**不支持 BT/磁力**；实际速度受源站带宽与网络限制，多线程分段不保证突破源站限速；aria2 daemon 空闲自动退出（无驻留）；Linux 交叉编译环境无法真机运行，下载功能需 Windows/macOS 实机验证；仅用于用户自己的合法链接，不提供会员绕过/代理加速/侵权下载能力
 - **v0.7.1 补齐后仍降级（诚实）**：桌宠 ImageSeq 帧序列导入未做（多实例用自绘内置猫）；开机动画 Video 样式未实现播放（素材库可登记/设为当前，但启动窗口不播视频）；表情态（idle/happy/sleep）数据已持久化但窗口未随表情切换绘制；STT 需系统语音识别语言包（无包时自动降级文字输入，代码已检测未在真机实测识别）；AI 生成素材依赖用户配置的图像 API（默认关闭）；macOS STT 未实现（需原生桥接，设置页已说明）；macOS 桌宠/ZenDesktop 不提供（Windows-only）
 - **垂直任务栏**：歌词/壁纸已做基础兜底，未深度适配
 - **频谱精度**：loopback 为系统输出混音，非单应用音频
@@ -131,13 +152,15 @@ DogDesk/
 │   │       │                        #   ChatCompletions / ToolRegistry / CharacterPresets / ImageGenClient
 │   │       ├── Pets/                # PetStore（桌宠持久化：%AppData%\DogDesk\pets\ 每宠一文件+备份）
 │   │       ├── BootAnim/            # BootAnimStore（开机动画素材库索引）
+│   │       ├── Download/            # DownloadManager（aria2 子进程+JSON-RPC）/ ClipboardLinkWatcher（默认关）
 │   │       ├── Effect/ Playback/ MusicSource/ Playlists/ Settings/ Lyrics/ SpectrumAnalyzer/ Equalizer ...
 │   ├── DogDesk/           # Windows WPF 版
 │   │   ├── App.xaml(.cs)            # 入口 + 开机动画展示 + 单例 + 会话路由
-│   │   ├── MainWindow.xaml(.cs)     # 控制面板（15 Tab）+ MainWindow.v06.cs / MainWindow.v07.cs
+│   │   ├── MainWindow.xaml(.cs)     # 控制面板（16 Tab）+ MainWindow.v06.cs / v07.cs / v08.cs（下载）
 │   │   ├── Views/                   # 媒体条/壁纸/频谱/歌词/全屏歌词/歌单架/粒子/
 │   │   │                            #   PetWindow(桌宠) / PetChatWindow(点击对话) / BootAnimWindow(开机动画)
 │   │   ├── Services/                # MpvAudioPlayer / MediaSessionRouter / DeskBox / Optimizer / Mpv / ...
+│   │   ├── aria2/                   # 打包自带 aria2c.exe v1.37.0 + GPL-2.0 LICENSE.txt
 │   │   └── Interop/                 # Win32 P/Invoke / 任务栏 / WorkerW
 │   └── DogDesk.Mac/       # macOS Avalonia 版（net8.0 + Avalonia 11）
 │       ├── Services/                # MpvLib / MpvAudioPlayer / AppServices(含双通道 LLM) / 曲库 / 封面
@@ -158,6 +181,7 @@ DogDesk/
 - **Open-LLM-VTuber**（[Open-LLM-VTuber/Open-LLM-VTuber](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber)）：仅参考"AI 角色 + LLM/TTS/STT"产品形态，**功能级简化自研**（LLM 双通道 + 工具调用 + SAPI TTS），未复制代码
 - **ZenDesktop**（[Liset999/ZenDesktop](https://github.com/Liset999/ZenDesktop)，Windhawk mod）：仅提供**安装/卸载封装脚本**（GPL-3.0 只封装流程，不复制其 mod 代码）
 - **Ollama**（[ollama/ollama](https://github.com/ollama/ollama)，MIT）：本地 LLM 通道运行时依赖，用户自行安装
+- **aria2**（[aria2/aria2](https://github.com/aria2/aria2)，GPL-2.0）：下载模块运行时依赖；Windows 版打包自带其官方二进制 `aria2c.exe`（v1.37.0）与 LICENSE.txt，**仅以子进程 + JSON-RPC 调用，不含、不复制其源码**；macOS 版检测用户自行 `brew install` 的 aria2c
 - AF Media Bar（MIT）、Lively Wallpaper（GPL-3.0，仅参考思路）、libmpv（LGPL-2.1，动态链接）、Lyricify Lyrics Helper（见其仓库协议）、Avalonia（MIT）
 - 网易云在线音源/榜单/歌单导入为非官方第三方接口，仅供学习，稳定性不保证；Navidrome 凭据与 AI key 明文存本机 settings.json，注意保管
 

@@ -320,6 +320,13 @@ public partial class MainWindow
                 ParametersJson = "{\"type\":\"object\",\"properties\":{\"seconds\":{\"type\":\"number\"},\"text\":{\"type\":\"string\"}},\"required\":[\"seconds\",\"text\"]}",
                 RequiresConfirm = true,
             });
+            ToolRegistry.Register(new ToolDescriptor
+            {
+                Name = "add_download",
+                Description = "添加一个 http/https 下载任务到下载管理器",
+                ParametersJson = "{\"type\":\"object\",\"properties\":{\"url\":{\"type\":\"string\"},\"dir\":{\"type\":\"string\"},\"filename\":{\"type\":\"string\"}},\"required\":[\"url\"]}",
+                RequiresConfirm = true,
+            });
         }
         catch { }
     }
@@ -330,6 +337,8 @@ public partial class MainWindow
         {
             string args = call.Arguments ?? "{}";
             Log($"[AI工具] 桌宠调用了 {call.Name}（参数 {args}）");
+            if (call.Name == "add_download")
+                return ExecAddDownload(args);
             string result = call.Name switch
             {
                 "media_control" => ExecMediaControl(args),
@@ -437,6 +446,32 @@ public partial class MainWindow
             return $"已设置 {minutes:0.#} 分钟后提醒";
         }
         catch (Exception ex) { return "设置提醒失败：" + ex.Message; }
+    }
+
+    private async Task<string> ExecAddDownload(string args)
+    {
+        try
+        {
+            var el = Parse(args);
+            string url = el.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "";
+            string dir = el.TryGetProperty("dir", out var d) ? d.GetString() ?? "" : "";
+            string filename = el.TryGetProperty("filename", out var f) ? f.GetString() ?? "" : "";
+            if (url.Length == 0) return "缺少 url 参数";
+            await _downloads.AddTaskAsync(url,
+                dir.Length == 0 ? null : dir,
+                filename.Length == 0 ? null : filename);
+            string name = System.IO.Path.GetFileName(url);
+            if (string.IsNullOrEmpty(name)) name = url;
+            string result = "已添加到下载：" + name;
+            Log($"[AI工具] add_download → {result}");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            string err = "添加下载失败：" + ex.Message;
+            Log("[AI工具] " + err);
+            return err;
+        }
     }
 
     private void OnAiToggled(object sender, RoutedEventArgs e)

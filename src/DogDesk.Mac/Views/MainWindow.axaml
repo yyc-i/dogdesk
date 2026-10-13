@@ -1,10 +1,15 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:DogDesk.Mac.Views"
         x:Class="DogDesk.Mac.Views.MainWindow"
         Width="980" Height="720"
         MinWidth="820" MinHeight="600"
         Title="dogdesk · macOS"
         ExtendClientAreaToDecorationsHint="False">
+
+  <Window.Resources>
+    <conv:DownloadStatusToVisibilityConverter x:Key="DlStatusVis"/>
+  </Window.Resources>
 
   <TabControl x:Name="RootTabs" Margin="12">
 
@@ -219,6 +224,125 @@
                    KeyDown="AiInput_KeyDown"/>
           <Button x:Name="AiSendBtn" Content="发送" Click="AiSend_Click" MinWidth="80"/>
         </StackPanel>
+      </Grid>
+    </TabItem>
+
+    <!-- ============ 下载（v0.8） ============ -->
+    <TabItem Header="下载">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" RowSpacing="8" Margin="2">
+
+        <!-- 完成/错误 Toast（页内顶部，默认隐藏，3s 自动消失） -->
+        <Border Grid.Row="0" x:Name="DownloadToast" IsVisible="False"
+                Background="#2a3d2a" CornerRadius="8" Padding="10,6">
+          <TextBlock x:Name="DownloadToastText" Foreground="#8fd0a0" TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- 新建下载区 -->
+        <Border Grid.Row="1" Background="#222430" CornerRadius="10" Padding="10,8">
+          <StackPanel Spacing="6">
+            <TextBox x:Name="DownloadUrlBox" Watermark="粘贴 http/https 下载链接…（回车添加）"
+                     KeyDown="DownloadUrl_KeyDown"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBox x:Name="DownloadDirBox" Width="360" Watermark="保存目录（留空=默认下载目录）"/>
+              <Button x:Name="DownloadBrowseBtn" Content="浏览…" Click="DownloadBrowse_Click"/>
+              <TextBox x:Name="DownloadNameBox" Width="180" Watermark="文件名（可留空）"/>
+              <Button x:Name="DownloadAddBtn" Content="添加下载" Click="DownloadAdd_Click"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- 下载设置区 -->
+        <Border Grid.Row="2" Background="#222430" CornerRadius="10" Padding="10,8">
+          <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+            <TextBlock Text="并发" VerticalAlignment="Center"/>
+            <ComboBox x:Name="DownloadConcurrencyBox" Width="80" SelectionChanged="DownloadConcurrency_Changed">
+              <ComboBoxItem Content="1"/>
+              <ComboBoxItem Content="2"/>
+              <ComboBoxItem Content="3"/>
+              <ComboBoxItem Content="4"/>
+              <ComboBoxItem Content="6"/>
+              <ComboBoxItem Content="8"/>
+              <ComboBoxItem Content="16"/>
+            </ComboBox>
+            <TextBlock Text="限速" VerticalAlignment="Center"/>
+            <ComboBox x:Name="DownloadLimitBox" Width="100" SelectionChanged="DownloadLimit_Changed">
+              <ComboBoxItem Content="不限"/>
+              <ComboBoxItem Content="512K"/>
+              <ComboBoxItem Content="1M"/>
+              <ComboBoxItem Content="2M"/>
+              <ComboBoxItem Content="5M"/>
+              <ComboBoxItem Content="10M"/>
+              <ComboBoxItem Content="20M"/>
+              <ComboBoxItem Content="50M"/>
+            </ComboBox>
+            <ToggleSwitch x:Name="ClipWatchSwitch" Content="监听剪贴板链接（默认关）" Click="ClipWatch_Toggled"/>
+            <ToggleSwitch x:Name="NotifySwitch" Content="下载完成提示" Click="Notify_Toggled"/>
+          </StackPanel>
+        </Border>
+
+        <!-- aria2 内核状态行 -->
+        <Border Grid.Row="3" Background="#1c1e28" CornerRadius="8" Padding="10,6">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock x:Name="Aria2StatusText" Opacity="0.85" VerticalAlignment="Center" TextWrapping="Wrap"/>
+            <Button x:Name="CopyBrewBtn" Content="复制安装命令" Click="CopyBrew_Click" Margin="8,0,0,0"/>
+          </StackPanel>
+        </Border>
+
+        <!-- 剪贴板检测到链接横幅（默认隐藏） -->
+        <Border Grid.Row="4" x:Name="ClipBanner" IsVisible="False"
+                Background="#20243a" CornerRadius="8" Padding="10,6">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="检测到链接：" VerticalAlignment="Center" Opacity="0.85"/>
+            <TextBlock x:Name="ClipUrlText" Opacity="0.85" VerticalAlignment="Center"
+                       TextWrapping="Wrap" MaxWidth="520"/>
+            <Button x:Name="ClipAddBtn" Content="添加到下载" Click="ClipAdd_Click"/>
+            <Button x:Name="ClipIgnoreBtn" Content="忽略" Click="ClipIgnore_Click"/>
+          </StackPanel>
+        </Border>
+
+        <!-- 任务列表 -->
+        <Grid Grid.Row="5">
+          <ListBox x:Name="DownloadList">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Border Background="#1c1e28" CornerRadius="8" Padding="10,8" Margin="0,2">
+                  <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Grid.Column="0" FontWeight="SemiBold" TextWrapping="Wrap"
+                                 Text="{Binding FileName}"/>
+                      <TextBlock Grid.Column="1" Opacity="0.7" Margin="8,0,0,0" VerticalAlignment="Center"
+                                 Text="{Binding SizeText}"/>
+                    </Grid>
+                    <ProgressBar Minimum="0" Maximum="100" Height="6"
+                                 Value="{Binding ProgressPercent}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                      <TextBlock FontSize="12" Opacity="0.75" Text="{Binding SpeedText}"/>
+                      <TextBlock FontSize="12" Opacity="0.75" Text="{Binding ElapsedText}"/>
+                      <TextBlock FontSize="12" Opacity="0.75" Text="{Binding StatusText}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Button Content="暂停" Click="TaskPause_Click" Padding="8,2"
+                              IsVisible="{Binding Status, Converter={StaticResource DlStatusVis}, ConverterParameter=Pause}"/>
+                      <Button Content="恢复" Click="TaskResume_Click" Padding="8,2"
+                              IsVisible="{Binding Status, Converter={StaticResource DlStatusVis}, ConverterParameter=Resume}"/>
+                      <Button Content="取消" Click="TaskCancel_Click" Padding="8,2"
+                              IsVisible="{Binding Status, Converter={StaticResource DlStatusVis}, ConverterParameter=Cancel}"/>
+                      <Button Content="重试" Click="TaskRetry_Click" Padding="8,2"
+                              IsVisible="{Binding Status, Converter={StaticResource DlStatusVis}, ConverterParameter=Retry}"/>
+                      <Button Content="打开文件夹" Click="TaskOpenFolder_Click" Padding="8,2"
+                              IsVisible="{Binding Status, Converter={StaticResource DlStatusVis}, ConverterParameter=Open}"/>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <TextBlock x:Name="DownloadEmptyText" Text="暂无下载任务" Opacity="0.5"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- 状态行：活跃任务数 + 总速度 -->
+        <TextBlock Grid.Row="6" x:Name="DownloadStatusText" Opacity="0.75"/>
       </Grid>
     </TabItem>
 

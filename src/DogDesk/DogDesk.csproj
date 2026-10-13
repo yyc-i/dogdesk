@@ -19,7 +19,7 @@
     <MpvWindowsArm64Enabled>false</MpvWindowsArm64Enabled>
     <!-- WPF 以 manifest 声明 PerMonitorV2 是正确做法，抑制 WinForms 对此的 WFAC010 警告 -->
     <NoWarn>WFAC010</NoWarn>
-    <Version>0.7.1</Version>
+    <Version>0.8.0</Version>
     <Description>任务栏媒体控制条 + 动态壁纸（libmpv 全格式渲染 + SMTC/内置音频路由 + 频谱律动 + 桌面歌词 + 本地曲库 + 在线音源 + Navidrome + 10 段均衡器 + 全屏沉浸式歌词 + 多显示器）</Description>
   </PropertyGroup>
 
@@ -46,6 +46,12 @@
     <Content Include="$(NuGetPackageRoot)endpne.libmpv.windows/0.41.0/build/x64/libmpv-2.dll"
              Link="libmpv\win-x64\libmpv-2.dll"
              CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- v0.8：下载加速内核 aria2c（GPL-2.0）随包分发到输出目录 aria2\ -->
+    <Content Include="aria2\aria2c.exe" Link="aria2\aria2c.exe" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="aria2\LICENSE.txt" Link="aria2\LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

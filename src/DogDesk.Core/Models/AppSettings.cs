@@ -154,6 +154,18 @@ public sealed class AppSettings
     /// <summary>启动动画最长显示时长（秒），超时自动关闭。</summary>
     public double BootAnimDurationSec { get; set; } = 3.5;
 
+    // ---- v0.8 下载加速与下载管理（aria2 进程集成） ----
+    /// <summary>自定义下载目录（空=使用系统默认 Downloads 目录）。</summary>
+    public string DownloadDir { get; set; } = "";
+    /// <summary>最大并发下载数（1..16）。</summary>
+    public int DownloadMaxConcurrent { get; set; } = 3;
+    /// <summary>全局限速（KiB/s，0=不限速）。</summary>
+    public long DownloadMaxSpeedKib { get; set; }
+    /// <summary>剪贴板链接监听（默认关闭，由用户在设置中开启）。</summary>
+    public bool DownloadClipboardWatch { get; set; }
+    /// <summary>下载完成桌面通知（默认开）。</summary>
+    public bool DownloadNotifyComplete { get; set; } = true;
+
     // ---- 通用 ----
     public string AccentColor { get; set; } = "#818CF8";          // 主题强调色
     public bool AutoStart { get; set; }                           // 开机自启（启动文件夹快捷方式，非侵入）

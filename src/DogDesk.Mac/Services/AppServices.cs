@@ -3,6 +3,7 @@ using DogDesk.Models;
 using DogDesk.Services;
 using DogDesk.Services.Ai;
 using DogDesk.Services.BootAnim;
+using DogDesk.Services.Download;
 using DogDesk.Services.Effect;
 using DogDesk.Services.Equalizer;
 using DogDesk.Services.MusicSource;
@@ -26,6 +27,9 @@ public sealed class AppServices
     public NavidromeClient Navidrome { get; } = new();
     public RadioService Radio { get; }
     public List<DogDeskPlaylist> Playlists { get; private set; }
+
+    /// <summary>下载管理器（v0.8）：aria2 内核封装，UI 经 <see cref="AppServices"/> 间接访问。</summary>
+    public DownloadManager Downloads { get; }
 
     /// <summary>播放状态变化（mpv 属性 / 队列切换 / 封面就绪），UI 刷新入口。</summary>
     public event Action? StateChanged;
@@ -56,6 +60,9 @@ public sealed class AppServices
         // 歌单（含「我的收藏」）与电台
         Playlists = PlaylistStore.EnsureFavorites(PlaylistStore.Load());
         Radio = new RadioService(Netease);
+
+        // v0.8 下载管理（aria2 内核，初始化由 UI 在打开主窗口后异步触发）
+        Downloads = new DownloadManager(Settings);
 
         ApplyAudioChain();
         ApplySpeed();
@@ -278,6 +285,9 @@ public sealed class AppServices
     /// <summary>退出时保存队列与当前位置（若启用且有有效队列）。</summary>
     public void SaveOnExit()
     {
+        // v0.8 下载内核退出（幂等，异常安全：不影响记忆播放保存）
+        try { Downloads.Shutdown(); } catch { }
+
         if (!Settings.Current.ResumePlayback || Queue.Current is null) return;
         try
         {

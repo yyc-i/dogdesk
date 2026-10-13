@@ -5,6 +5,7 @@ using System.Windows.Media;
 using DogDesk.Interop;
 using DogDesk.Models;
 using DogDesk.Services;
+using DogDesk.Services.Download;
 using DogDesk.Services.Equalizer;
 using DogDesk.Services.Effect;
 using DogDesk.Services.DeskBox;
@@ -28,6 +29,7 @@ public partial class MainWindow : Window
     private readonly AudioSpectrumService _spectrum;
     private readonly LyricsService _lyrics;
     private readonly SettingsService _settingsService;
+    private readonly DownloadManager _downloads;
 
     private AppSettings _settings;
     private bool _loadingUi;
@@ -55,7 +57,7 @@ public partial class MainWindow : Window
     public MainWindow(IMediaSession session, SmtcMediaSession system, MpvAudioPlayer builtin,
         PlaybackQueue queue, NeteaseMusicSource netease, NavidromeClient navidrome,
         WallpaperEngine wallpaper, AudioSpectrumService spectrum, LyricsService lyrics,
-        SettingsService settingsService)
+        SettingsService settingsService, DownloadManager downloads)
     {
         InitializeComponent();
         _session = session;
@@ -68,6 +70,7 @@ public partial class MainWindow : Window
         _spectrum = spectrum;
         _lyrics = lyrics;
         _settingsService = settingsService;
+        _downloads = downloads;
         _settings = settingsService.Current;
 
         _wallpaper.Log += Log;
@@ -99,6 +102,7 @@ public partial class MainWindow : Window
         _idle.Start();
 
         InitV06();
+        InitDownloadTab();
     }
 
     /// <summary>F8：窗口关闭时保存播放位置快照（失败静默）。</summary>
