@@ -681,6 +681,11 @@
                 <TextBlock Text="隐私说明：拍爪输入仅用 GetAsyncKeyState 在本机进程内读取键盘状态，离线运行，不收集、不上传任何数据。"
                            FontSize="11" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" Margin="0,10,0,0"/>
                 <TextBlock x:Name="PetStatusText" Text="" FontSize="12" Margin="0,8,0,0" Foreground="{StaticResource TextSecondary}"/>
+                <ListView x:Name="PetList" Height="120" Margin="0,10,0,6" Background="#12141C"/>
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                  <Button x:Name="PetAddButton" Style="{StaticResource PanelButton}" Content="添加内置桌宠" Click="OnPetAddClick"/>
+                  <Button x:Name="PetDeleteButton" Style="{StaticResource PanelButton}" Content="删除选中" Margin="8,0,0,0" Click="OnPetDeleteClick"/>
+                </StackPanel>
               </StackPanel>
             </Border>
           </StackPanel>
@@ -721,7 +726,11 @@
                     <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
                   <TextBox x:Name="AiInputBox" Style="{StaticResource PanelTextBox}" KeyDown="OnAiInputKeyDown"/>
-                  <Button Grid.Column="1" x:Name="AiSendButton" Style="{StaticResource PanelButton}" Content="发送" Margin="8,0,0,0" Padding="16,6" Click="OnAiSendClick"/>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="AiMicButton" Style="{StaticResource PanelButton}" Content="按住说话" Margin="8,0,0,0" Padding="12,6"
+                            MouseLeftButtonDown="OnMicDown" MouseLeftButtonUp="OnMicUp"/>
+                    <Button x:Name="AiSendButton" Style="{StaticResource PanelButton}" Content="发送" Margin="8,0,0,0" Padding="16,6" Click="OnAiSendClick"/>
+                  </StackPanel>
                 </Grid>
                 <TextBlock x:Name="AiStatusText" Text="" FontSize="12" Margin="0,8,0,0" Foreground="{StaticResource TextSecondary}"/>
               </StackPanel>
@@ -744,10 +753,32 @@
                     <ComboBoxItem Content="Aurora 极光"/>
                     <ComboBoxItem Content="Gradient 渐变呼吸"/>
                     <ComboBoxItem Content="FlowText 流光文字"/>
+                    <ComboBoxItem Content="Particle 粒子星云"/>
+                    <ComboBoxItem Content="Geometry 几何脉冲"/>
+                    <ComboBoxItem Content="Image 图片"/>
                   </ComboBox>
-                  <TextBlock Text="（Particle/Image/Video 为变体，路径在设置页）" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="{StaticResource TextSecondary}"/>
+                  <TextBlock Text="（Video 由素材库登记后选用）" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="{StaticResource TextSecondary}"/>
                 </StackPanel>
                 <Button x:Name="BootTestButton" Style="{StaticResource PanelButton}" Content="预览当前开机动画" Margin="0,12,0,0" Click="OnBootTestClick"/>
+
+                <TextBlock Text="素材库" FontSize="13" FontWeight="SemiBold" Margin="0,14,0,6"/>
+                <ListView x:Name="BootLibList" Height="110" Background="#12141C"/>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                  <Button x:Name="BootImportBtn" Style="{StaticResource PanelButton}" Content="导入图片/视频" Click="OnBootImportClick"/>
+                  <Button x:Name="BootSetBtn" Style="{StaticResource PanelButton}" Content="设为当前" Margin="8,0,0,0" Click="OnBootSetClick"/>
+                  <Button x:Name="BootDeleteBtn" Style="{StaticResource PanelButton}" Content="删除" Margin="8,0,0,0" Click="OnBootDeleteClick"/>
+                </StackPanel>
+
+                <TextBlock Text="AI 生成素材" FontSize="13" FontWeight="SemiBold" Margin="0,14,0,6"/>
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBox x:Name="AiImagePromptBox" Style="{StaticResource PanelTextBox}" Text="赛博朋克风格的猫与星球"/>
+                  <Button Grid.Column="1" x:Name="AiImageGenBtn" Style="{StaticResource PanelButton}" Content="生成" Margin="8,0,0,0" Padding="16,6" Click="OnAiImageGenClick"/>
+                </Grid>
+                <TextBlock Text="（第三方图像 API，仅供学习；生成请求发送到你配置的图像服务，由你负责）" FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,4,0,0"/>
                 <TextBlock x:Name="BootStatusText" Text="" FontSize="12" Margin="0,8,0,0" Foreground="{StaticResource TextSecondary}"/>
               </StackPanel>
             </Border>

@@ -49,6 +49,7 @@ public sealed class BootAnimWindow : Window
         switch (style)
         {
             case "Particle": BuildParticles(host); break;
+            case "Pulse": BuildPulse(host); break;
             case "FlowText": BuildFlowText(host); break;
             case "Image":
                 if (!string.IsNullOrWhiteSpace(s.BootAnimPath) && File.Exists(s.BootAnimPath))
@@ -122,6 +123,34 @@ public sealed class BootAnimWindow : Window
         });
     }
 
+    // Pulse：几何脉冲圆环缩放
+    private void BuildPulse(Panel host)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            var ring = new Ellipse
+            {
+                Width = 120, Height = 120,
+                Stroke = new SolidColorBrush(Color.FromRgb(0x81, 0x8c, 0xf8)),
+                StrokeThickness = 2,
+                Opacity = 0.7,
+                Tag = 3.0, // 标记为脉冲圆环
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                RenderTransform = new ScaleTransform(1, 1),
+            };
+            _particles.Add(ring);
+            host.Children.Add(ring);
+        }
+        host.Children.Add(new TextBlock
+        {
+            Text = "dogdesk", FontSize = 30, FontWeight = FontWeight.SemiBold,
+            Foreground = Brushes.White, Opacity = 0.9,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+        });
+    }
+
     // FlowText：居中流光文字
     private void BuildFlowText(Panel host)
     {
@@ -153,7 +182,17 @@ public sealed class BootAnimWindow : Window
         {
             var p = _particles[i];
             double speed = p.Tag is double d ? d : 1;
-            if (p.Width > 200)
+            if (p.Tag is double tag && tag == 3.0)
+            {
+                // 脉冲圆环缩放
+                double s = 1.0 + 0.7 * Math.Abs(Math.Sin(_t * 1.6 + i * 0.9));
+                if (p.RenderTransform is ScaleTransform st)
+                {
+                    st.ScaleX = s;
+                    st.ScaleY = s;
+                }
+            }
+            else if (p.Width > 200)
             {
                 // 极光光斑漂移
                 double cx = w * (0.5 + 0.35 * Math.Cos(_t + i * 2.1));

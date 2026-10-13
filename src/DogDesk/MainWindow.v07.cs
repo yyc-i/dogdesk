@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using DogDesk.Models;
 using DogDesk.Services.Ai;
+using DogDesk.Services.BootAnim;
 using DogDesk.Services.Optimizer;
 using DogDesk.Services.Pets;
 using DogDesk.Views;
@@ -16,7 +17,6 @@ namespace DogDesk;
 
 public partial class MainWindow
 {
-    private PetWindow? _pet;
     private readonly List<(string Role, string Text)> _chat = new();
 
     // ================= 模块 1 桌宠 =================
@@ -55,30 +55,88 @@ public partial class MainWindow
 
     private void ShowPet()
     {
-        ClosePet();
-        _pet = new PetWindow
+        try
         {
-            Left = _settings.PetScale * 100,
-            Top = SystemParameters.WorkArea.Bottom - 180,
-            Width = 120 * _settings.PetScale,
-            Height = 120 * _settings.PetScale,
-        };
-        _pet.SourceInitialized += (_, _) => _pet.ApplyNoActivate();
-        _pet.Clicked += pet =>
-        {
-            try
+            ClosePet();
+            var all = PetStore.LoadAll();
+            if (all.Count == 0)
             {
-                var bubble = new PetChatWindow(AskAiAsync)
-                {
-                    Left = pet.Left - 140,
-                    Top = pet.Top - 200,
-                };
-                bubble.Show();
+                all.Add(new PetInfo { Name = "猫", Expression = "idle" });
+                PetStore.Save(all[0]);
             }
-            catch (Exception ex) { Log("[桌宠] 气泡失败：" + ex.Message); }
-        };
-        _pet.Show();
-        _pet.StartPolling();
+            foreach (var info in all)
+                CreatePetWindow(info);
+            RefreshPetList();
+        }
+        catch (Exception ex) { PetStatusText.Text = "桌宠初始化失败：" + ex.Message; }
+    }
+
+    private readonly Dictionary<string, PetWindow> _pets = new();
+    private readonly List<PetInfo> _petInfos = new();
+
+    private void CreatePetWindow(PetInfo info)
+    {
+        try
+        {
+            var w = new PetWindow
+            {
+                Left = info.X,
+                Top = info.Y,
+                Width = 120 * _settings.PetScale,
+                Height = 120 * _settings.PetScale,
+            };
+            w.SourceInitialized += (_, _) => w.ApplyNoActivate();
+            w.PositionChanged += p =>
+            {
+                info.X = (int)p.Left; info.Y = (int)p.Top;
+                try { PetStore.Save(info); } catch { }
+            };
+            w.Clicked += p =>
+            {
+                try { new PetChatWindow(AskAiAsync) { Left = p.Left - 140, Top = p.Top - 200 }.Show(); } catch { }
+            };
+            w.Show();
+            w.StartPolling();
+            _pets[info.Name] = w;
+            _petInfos.Add(info);
+        }
+        catch { }
+    }
+
+    private void RefreshPetList()
+    {
+        PetList.Items.Clear();
+        foreach (var p in _petInfos)
+            PetList.Items.Add($"{p.Name} · {p.ModelType} · {p.Expression}");
+    }
+
+    private void OnPetAddClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var info = new PetInfo { Name = $"猫{_pets.Count + 1}", Expression = "idle" };
+            PetStore.Save(info);
+            CreatePetWindow(info);
+            RefreshPetList();
+            PetStatusText.Text = "已添加桌宠";
+        }
+        catch (Exception ex) { PetStatusText.Text = "添加失败：" + ex.Message; }
+    }
+
+    private void OnPetDeleteClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            int idx = PetList.SelectedIndex;
+            if (idx < 0 || idx >= _petInfos.Count) { PetStatusText.Text = "请先选中一只桌宠"; return; }
+            var info = _petInfos[idx];
+            if (_pets.TryGetValue(info.Name, out var w)) { try { w.Close(); } catch { } _pets.Remove(info.Name); }
+            PetStore.Delete(info.Name);
+            _petInfos.RemoveAt(idx);
+            RefreshPetList();
+            PetStatusText.Text = "已删除桌宠";
+        }
+        catch (Exception ex) { PetStatusText.Text = "删除失败：" + ex.Message; }
     }
 
     /// <summary>共享 LLM 调用管线（Tab 发送与桌宠气泡共用）。</summary>
@@ -110,8 +168,14 @@ public partial class MainWindow
 
     private void ClosePet()
     {
-        try { _pet?.Close(); } catch { }
-        _pet = null;
+        try
+        {
+            foreach (var w in _pets.Values) { try { w.Close(); } catch { } }
+            _pets.Clear();
+            _petInfos.Clear();
+            
+        }
+        catch { }
     }
 
     private void OnPetScaleChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -121,10 +185,10 @@ public partial class MainWindow
             _settings.PetScale = e.NewValue;
             PetScaleValue.Text = e.NewValue.ToString("0.0");
             _settingsService.Save();
-            if (_pet is not null)
+            foreach (var w in _pets.Values)
             {
-                _pet.Width = 120 * e.NewValue;
-                _pet.Height = 120 * e.NewValue;
+                w.Width = 120 * e.NewValue;
+                w.Height = 120 * e.NewValue;
             }
         }
         catch { }
@@ -162,6 +226,41 @@ public partial class MainWindow
     {
         if (AiChannelCombo.SelectedItem is ComboBoxItem it && it.Tag is string tag)
             _settings.AiChannel = tag;
+    }
+
+    private System.Speech.Recognition.SpeechRecognitionEngine? _stt;
+
+    private void OnMicDown(object sender, MouseButtonEventArgs e)
+    {
+        try
+        {
+            if (System.Speech.Recognition.SpeechRecognitionEngine.InstalledRecognizers().Count == 0)
+            {
+                AiStatusText.Text = "系统未安装语音识别语言包，请用文字输入";
+                return;
+            }
+            _stt ??= new System.Speech.Recognition.SpeechRecognitionEngine();
+            _stt.LoadGrammar(new System.Speech.Recognition.DictationGrammar());
+            _stt.SpeechRecognized += (_, ev) =>
+                Dispatcher.BeginInvoke(() =>
+                {
+                    AiInputBox.Text = ev.Result.Text;
+                    AiStatusText.Text = "";
+                });
+            _stt.SetInputToDefaultAudioDevice();
+            _stt.RecognizeAsync(System.Speech.Recognition.RecognizeMode.Single);
+            AiStatusText.Text = "正在聆听…（松开结束）";
+        }
+        catch (Exception ex) { AiStatusText.Text = "STT 不可用：" + ex.Message; }
+    }
+
+    private void OnMicUp(object sender, MouseButtonEventArgs e)
+    {
+        try
+        {
+            _stt?.RecognizeAsyncStop();
+        }
+        catch { }
     }
 
     private async void OnOllamaCheckClick(object sender, RoutedEventArgs e)
@@ -307,14 +406,17 @@ public partial class MainWindow
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DogDesk", "screenshots");
             System.IO.Directory.CreateDirectory(dir);
             string file = System.IO.Path.Combine(dir, $"shot_{DateTime.Now:yyyyMMdd_HHmmss}.png");
-            var bounds = System.Windows.Forms.Screen.PrimaryScreen!.Bounds;
+            // 整个虚拟桌面（所有显示器并集）
+            var vs = System.Windows.Forms.SystemInformation.VirtualScreen;
+            var bounds = new System.Drawing.Rectangle(vs.Left, vs.Top, vs.Width, vs.Height);
             using var bmp = new System.Drawing.Bitmap(bounds.Width, bounds.Height);
             using (var g = System.Drawing.Graphics.FromImage(bmp))
             {
                 g.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bmp.Size);
             }
             bmp.Save(file, System.Drawing.Imaging.ImageFormat.Png);
-            return "已保存截图：" + file;
+            int n = System.Windows.Forms.Screen.AllScreens.Length;
+            return $"已保存虚拟桌面截图（{n} 屏）：" + file;
         }
         catch (Exception ex) { return "截图失败：" + ex.Message; }
     }
@@ -497,8 +599,12 @@ public partial class MainWindow
             {
                 "Gradient" => 1,
                 "FlowText" => 2,
+                "Particle" => 3,
+                "Geometry" => 4,
+                "Image" => 5,
                 _ => 0,
             };
+            RefreshBootLib();
         }
         catch { }
     }
@@ -509,9 +615,118 @@ public partial class MainWindow
         {
             1 => "Gradient",
             2 => "FlowText",
+            3 => "Particle",
+            4 => "Geometry",
+            5 => "Image",
             _ => "Aurora",
         };
         _settingsService.Save();
+    }
+
+    private readonly List<BootAnimEntry> _bootLib = new();
+
+    private void RefreshBootLib()
+    {
+        try
+        {
+            _bootLib.Clear();
+            _bootLib.AddRange(BootAnimStore.Load());
+            BootLibList.Items.Clear();
+            foreach (var e in _bootLib) BootLibList.Items.Add($"{e.Name} · {e.Kind} · {System.IO.Path.GetFileName(e.Path)}");
+        }
+        catch { }
+    }
+
+    private void OnBootImportClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "媒体|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.mp4;*.mkv|图片|*.png;*.jpg;*.bmp|视频|*.mp4;*.mkv",
+            };
+            if (dlg.ShowDialog() != true) return;
+            System.IO.Directory.CreateDirectory(BootAnimStore.RootDir);
+            string dest = System.IO.Path.Combine(BootAnimStore.RootDir, System.IO.Path.GetFileName(dlg.FileName));
+            System.IO.File.Copy(dlg.FileName, dest, true);
+            string kind = System.IO.Path.GetExtension(dest).ToLower() is ".mp4" or ".mkv" ? "Video" : "Image";
+            var list = BootAnimStore.Load();
+            list.Add(new BootAnimEntry { Name = System.IO.Path.GetFileNameWithoutExtension(dest), Kind = kind, Path = dest });
+            BootAnimStore.Save(list);
+            RefreshBootLib();
+            BootStatusText.Text = "已导入素材";
+        }
+        catch (Exception ex) { BootStatusText.Text = "导入失败：" + ex.Message; }
+    }
+
+    private void OnBootSetClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            int idx = BootLibList.SelectedIndex;
+            if (idx < 0 || idx >= _bootLib.Count) { BootStatusText.Text = "请先选中素材"; return; }
+            var entry = _bootLib[idx];
+            _settings.BootAnimStyle = entry.Kind;
+            _settings.BootAnimPath = entry.Path;
+            _settingsService.Save();
+            BootStatusText.Text = "已设为当前：" + entry.Name;
+        }
+        catch (Exception ex) { BootStatusText.Text = "设置失败：" + ex.Message; }
+    }
+
+    private void OnBootDeleteClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            int idx = BootLibList.SelectedIndex;
+            if (idx < 0 || idx >= _bootLib.Count) { BootStatusText.Text = "请先选中素材"; return; }
+            var entry = _bootLib[idx];
+            var list = BootAnimStore.Load();
+            list.RemoveAll(x => x.Path == entry.Path);
+            BootAnimStore.Save(list);
+            try { if (System.IO.File.Exists(entry.Path)) System.IO.File.Delete(entry.Path); } catch { }
+            RefreshBootLib();
+            BootStatusText.Text = "已删除素材";
+        }
+        catch (Exception ex) { BootStatusText.Text = "删除失败：" + ex.Message; }
+    }
+
+    private async void OnAiImageGenClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string prompt = AiImagePromptBox.Text?.Trim() ?? "";
+            if (prompt.Length == 0) { BootStatusText.Text = "请输入提示词"; return; }
+            var client = new ImageGenClient
+            {
+                BaseUrl = _settings.AiBaseUrl,
+                ApiKey = _settings.AiApiKey,
+                Model = _settings.AiModel,
+            };
+            if (!client.IsConfigured) { BootStatusText.Text = "未配置图像 API（请先在 AI 伙伴页配置 Base URL / Key）"; return; }
+            BootStatusText.Text = "生成中…";
+            var url = await client.GenerateImageAsync(prompt);
+            if (string.IsNullOrEmpty(url)) { BootStatusText.Text = "生成失败或无返回"; return; }
+            System.IO.Directory.CreateDirectory(BootAnimStore.RootDir);
+            string file = System.IO.Path.Combine(BootAnimStore.RootDir, $"ai_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+            if (url.StartsWith("http"))
+            {
+                using var http = new System.Net.Http.HttpClient();
+                var bytes = await http.GetByteArrayAsync(url);
+                await System.IO.File.WriteAllBytesAsync(file, bytes);
+            }
+            else
+            {
+                var b64 = url.Contains(",") ? url.Split(',')[1] : url;
+                await System.IO.File.WriteAllBytesAsync(file, Convert.FromBase64String(b64));
+            }
+            var list = BootAnimStore.Load();
+            list.Add(new BootAnimEntry { Name = "AI：" + prompt[..Math.Min(10, prompt.Length)], Kind = "Image", Path = file });
+            BootAnimStore.Save(list);
+            RefreshBootLib();
+            BootStatusText.Text = "已生成并入库";
+        }
+        catch (Exception ex) { BootStatusText.Text = "生成失败：" + ex.Message; }
     }
 
     private void OnBootTestClick(object sender, RoutedEventArgs e)

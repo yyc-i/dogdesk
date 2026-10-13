@@ -1,4 +1,4 @@
-# DogDesk（v0.7.0）
+# DogDesk（v0.7.1）
 
 仓库：https://github.com/yyc-i/dogdesk  ·  显示名 `dogdesk`（内部标识 DogDesk）。
 
@@ -17,16 +17,16 @@
 | **内置播放内核** | 独立 libmpv 音频会话，驱动本地曲库/在线音源/Navidrome/电台/榜单；**会话路由**在内置与 SMTC 间透明切换 |
 | 本地曲库 / 在线音源 / Navidrome / 均衡器 / 3D 环绕+音效预设 / 3D 歌单架 / 底部实时频谱 / 节拍视觉 / 电台+榜单 / 毛玻璃+视频背景 / 歌词增强 / 记忆播放 / 倍速+音质 / 自建歌单+下一首+收藏 / 歌单导入 | v0.5–v0.6 全部能力保留（网易云等非官方接口已标注"仅供学习、稳定性不保证"） |
 | 全屏沉浸式歌词动画 / 动态配色 / 视频壁纸 / 多屏壁纸 / 图片轮播 / 动画壁纸 / 频谱律动 / 桌面歌词 | v0.4–v0.5 全部能力保留 |
-| **桌面桌宠（v0.7，Windows）** | BongoCat 风格自研：桌面悬浮卡通猫，敲击键盘（A/空格等）实时拍爪动画；透明无边框 `WS_EX_TOOLWINDOW\|NOACTIVATE` 不抢焦点、可拖动；**输入捕捉仅本机读取键盘状态（GetAsyncKeyState），离线运行、不收集不上传**（UI 标注）；可整体开关，未启用零实例（懒加载） |
+| **桌面桌宠（v0.7，Windows）** | BongoCat 风格自研：桌面悬浮卡通猫，敲击键盘（A/空格等）实时拍爪动画；透明无边框 `WS_EX_TOOLWINDOW\|NOACTIVATE` 不抢焦点、可拖动；**输入捕捉仅本机读取键盘状态（GetAsyncKeyState），离线运行、不收集不上传**（UI 标注）；**多实例（v0.7.1）**：可同时开多只桌宠，每只独立名称/型号/大小/位置/表情，关闭记忆、重启恢复（`%AppData%\DogDesk\pets\` 每宠一文件+自动备份）；未启用零实例（懒加载） |
 | **AI 桌宠（v0.7，Windows）** | 桌宠即 AI 角色：**点击桌宠**弹出对话气泡（文字 + TTS 语音朗读）；非对话时拍爪照常 |
 | **LLM 双通道（v0.7）** | **本地优先**：Ollama（http://localhost:11434/v1，OpenAI 兼容、无 key、免费离线、数据不出本机；自动检测服务与已拉取模型，未安装给出 `ollama serve` + `ollama pull qwen2.5:7b` 指引）；**云端可选**：OpenAI 兼容 API（豆包/DeepSeek/OpenAI，用户自备 base_url+key）；统一 `IChatProvider` 抽象，通道/模型/人设可切换 |
 | **工具调用（v0.7，Windows）** | function calling 白名单工具（**默认关闭**，设置页显式开启）：播放控制（上一首/播放暂停/下一首，接媒体条会话）、系统信息（CPU/内存/磁盘/电池，只读）、打开文件/文件夹/URL（白名单扩展名，可执行需确认弹窗）、截图保存（主屏 PNG 存 `%AppData%\DogDesk\screenshots\`）、定时提醒（Timer+弹窗）；全部含参数校验 + 日志「桌宠调用了 XX 工具」；**不提供删除/任意命令执行等危险工具** |
-| **AI 角色人设** | 内置 5 种性格预设（元气少女/知性姐姐/冷淡助手/幽默伙伴/猫娘），system prompt 可自定义编辑；对话上下文保留最近 10 轮；TTS 用 Windows 系统语音（SAPI，离线）朗读回复 |
+| **AI 角色人设** | 内置 5 种性格预设（元气少女/知性姐姐/冷淡助手/幽默伙伴/猫娘），system prompt 可自定义编辑；对话上下文保留最近 10 轮；TTS 用 Windows 系统语音（SAPI，离线）朗读回复；**STT 按住说话（v0.7.1，Windows）**：SAPI 语音识别（离线、不上传），可用性自动检测（无语言包时降级纯文本并提示） |
 | **ZenDesktop 视觉效果（v0.7，Windows，实验性）** | 系统优化 Tab 新增「视觉效果」分区：Windhawk 液态玻璃 mod 的**一键应用/卸载脚本**（scripts/zen-desktop/apply.ps1、uninstall.ps1，提权执行）；🔴 红风险「修改 Explorer 进程，可能影响稳定性，建议先建还原点」；**默认不勾选、绝不自动注入、仅封装安装/卸载流程，不复制 Windhawk/ZenDesktop 任何 mod 代码**（GPL-3.0） |
-| **自定义开机动画（v0.7）** | 启动时显示开机动画窗口（居中无边框，Esc/点击/超时自动关，默认开启可关）：**Aurora 极光 / Gradient 渐变呼吸 / FlowText 流光文字 / Image 图片** 四种内置样式；BootAnimDurationSec 可调 |
+| **自定义开机动画（v0.7/v0.7.1）** | 启动时显示开机动画窗口（居中无边框，Esc/点击/超时自动关，默认开启可关）：**Aurora 极光 / Gradient 渐变呼吸 / FlowText 流光文字 / Particle 粒子星云 / Geometry 几何脉冲 / Image 图片** 六种内置样式；**素材库（v0.7.1）**：`%AppData%\DogDesk\boot-anim\` 支持导入图片/视频、预览、设为当前、删除；**AI 生成素材**（默认关闭+隐私提示）：OpenAI 兼容 images API（用户自备 key）生成图自动入库 |
 | 设置持久化 / 系统托盘 / 开机自启 | `%AppData%\DogDesk\settings.json`；托盘；启动文件夹快捷方式（非侵入） |
 | 控制台 | 深色分页 UI（壁纸/媒体条/桌面歌词/频谱/曲库/在线音源/均衡器/电台榜单/歌单架/桌宠/AI 伙伴/开机动画/桌面整理/系统优化/设置），实时日志；**全局热键 Ctrl+Alt+D 显隐主界面 / Ctrl+Alt+P 切换桌宠**；托盘菜单含桌宠/AI 开关；首次运行显示可关闭引导条 |
-| **macOS 版（v0.7）** | Avalonia 11：播放/曲库/在线音源(网易云+Navidrome+电台+榜单)/歌单(封面轮播)/均衡器(环绕+倍速+音质)/AI 伙伴(双通道 LLM 对话)/设置 七 Tab + 置顶桌面歌词 + 全屏流光歌词 + **开机动画（Aurora/Particle/FlowText/Image）** + 动态配色 + 记忆播放；libmpv 动态加载（`brew install mpv`） |
+| **macOS 版（v0.7.1）** | Avalonia 11：播放/曲库/在线音源(网易云+Navidrome+电台+榜单)/歌单(封面轮播)/均衡器(环绕+倍速+音质)/AI 伙伴(双通道 LLM 对话)/设置 七 Tab + 置顶桌面歌词 + 全屏流光歌词 + **开机动画（Aurora/Particle/Pulse/FlowText/Image 五样式 + 素材库导入/预览/设为当前/删除 + AI 生成素材）** + 动态配色 + 记忆播放；libmpv 动态加载（`brew install mpv`） |
 
 ## AI 桌宠安全边界（务必阅读）
 
@@ -110,7 +110,7 @@ dotnet build src/DogDesk/DogDesk.csproj -c Release
 
 ## 已知限制
 
-- **v0.7 降级项（诚实）**：桌宠当前单实例、位置不持久化（多实例/帧序列导入未做）；开机动画仅 4 种代码样式 + Image 静态图（视频样式/素材库列表/AI 生成素材未做）；STT「按住说话」未接线（缺识别程序集与语言包）；截图仅主屏；TTS 依赖 Windows 语音包（缺包时降级日志提示）；Ollama 需本机安装（未实测端到端）
+- **v0.7.1 补齐后仍降级（诚实）**：桌宠 ImageSeq 帧序列导入未做（多实例用自绘内置猫）；开机动画 Video 样式未实现播放（素材库可登记/设为当前，但启动窗口不播视频）；表情态（idle/happy/sleep）数据已持久化但窗口未随表情切换绘制；STT 需系统语音识别语言包（无包时自动降级文字输入，代码已检测未在真机实测识别）；AI 生成素材依赖用户配置的图像 API（默认关闭）；macOS STT 未实现（需原生桥接，设置页已说明）；macOS 桌宠/ZenDesktop 不提供（Windows-only）
 - **垂直任务栏**：歌词/壁纸已做基础兜底，未深度适配
 - **频谱精度**：loopback 为系统输出混音，非单应用音频
 - **libmpv 体积**：全功能静态构建 dll 较大（~117MB）
@@ -129,7 +129,7 @@ DogDesk/
 │   │   └── Services/
 │   │       ├── Ai/                  # IChatProvider / LlmClient(云端) / OllamaClient(本地) /
 │   │       │                        #   ChatCompletions / ToolRegistry / CharacterPresets / ImageGenClient
-│   │       ├── Pets/                # PetStore（桌宠持久化 JSON+备份）
+│   │       ├── Pets/                # PetStore（桌宠持久化：%AppData%\DogDesk\pets\ 每宠一文件+备份）
 │   │       ├── BootAnim/            # BootAnimStore（开机动画素材库索引）
 │   │       ├── Effect/ Playback/ MusicSource/ Playlists/ Settings/ Lyrics/ SpectrumAnalyzer/ Equalizer ...
 │   ├── DogDesk/           # Windows WPF 版

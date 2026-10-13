@@ -207,6 +207,73 @@ public sealed class AppServices
     public List<BootAnimEntry> LoadBootAnimLibrary() => BootAnimStore.Load();
     public void SaveBootAnimLibrary(List<BootAnimEntry> entries) => BootAnimStore.Save(entries);
 
+    /// <summary>导入一张图片到素材库目录并登记；返回新条目，失败返回 null。</summary>
+    public BootAnimEntry? ImportBootAnimImage(string srcPath)
+    {
+        try
+        {
+            Directory.CreateDirectory(BootAnimStore.RootDir);
+            string ext = Path.GetExtension(srcPath);
+            if (string.IsNullOrEmpty(ext)) ext = ".png";
+            string dest = Path.Combine(BootAnimStore.RootDir, $"import_{DateTime.Now:yyyyMMdd_HHmmss}{ext}");
+            File.Copy(srcPath, dest, overwrite: true);
+            var entry = new BootAnimEntry { Name = Path.GetFileNameWithoutExtension(srcPath), Kind = "Image", Path = dest };
+            var list = LoadBootAnimLibrary();
+            list.Add(entry);
+            SaveBootAnimLibrary(list);
+            return entry;
+        }
+        catch { return null; }
+    }
+
+    /// <summary>删除素材条目（文件 + 索引）。</summary>
+    public void DeleteBootAnimEntry(BootAnimEntry entry)
+    {
+        try { if (File.Exists(entry.Path)) File.Delete(entry.Path); } catch { }
+        var list = LoadBootAnimLibrary();
+        list.RemoveAll(e => e.Path == entry.Path);
+        SaveBootAnimLibrary(list);
+    }
+
+    /// <summary>用 ImageGenClient 生成一张开机动画素材并保存登记；返回新条目，失败返回 null。</summary>
+    public async Task<BootAnimEntry?> GenerateBootAnimImageAsync(string prompt)
+    {
+        var s = Settings.Current;
+        try
+        {
+            var client = new ImageGenClient
+            {
+                BaseUrl = s.AiBaseUrl,
+                ApiKey = s.AiApiKey,
+                Model = s.AiModel,
+            };
+            string? result = await client.GenerateImageAsync(prompt);
+            if (string.IsNullOrWhiteSpace(result)) return null;
+
+            byte[] bytes;
+            if (result.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                using var http = new System.Net.Http.HttpClient();
+                bytes = await http.GetByteArrayAsync(result);
+            }
+            else
+            {
+                bytes = Convert.FromBase64String(result);
+            }
+
+            Directory.CreateDirectory(BootAnimStore.RootDir);
+            string dest = Path.Combine(BootAnimStore.RootDir, $"aigen_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+            await File.WriteAllBytesAsync(dest, bytes);
+
+            var entry = new BootAnimEntry { Name = "AI 生成", Kind = "Image", Path = dest };
+            var list = LoadBootAnimLibrary();
+            list.Add(entry);
+            SaveBootAnimLibrary(list);
+            return entry;
+        }
+        catch { return null; }
+    }
+
     // ============ 记忆播放 ============
     /// <summary>退出时保存队列与当前位置（若启用且有有效队列）。</summary>
     public void SaveOnExit()

@@ -443,7 +443,7 @@ public partial class MainWindow : Window
 
         // v0.7 开机动画
         BootAnimEnabledSwitch.IsChecked = s.BootAnimEnabled;
-        string[] styles = { "Aurora", "Particle", "FlowText", "Image" };
+        string[] styles = { "Aurora", "Particle", "Pulse", "FlowText", "Image" };
         int styleIdx = Array.IndexOf(styles, s.BootAnimStyle);
         BootAnimStyleBox.SelectedIndex = styleIdx < 0 ? 0 : styleIdx;
         BootAnimDurationSlider.Value = Math.Clamp(s.BootAnimDurationSec, 1, 10);
@@ -976,7 +976,7 @@ public partial class MainWindow : Window
     private void BootAnimStyle_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (_suppressEvents || BootAnimStyleBox.SelectedIndex < 0) return;
-        string[] styles = { "Aurora", "Particle", "FlowText", "Image" };
+        string[] styles = { "Aurora", "Particle", "Pulse", "FlowText", "Image" };
         _app.Settings.Current.BootAnimStyle = styles[BootAnimStyleBox.SelectedIndex];
         _app.Settings.Save();
     }
@@ -1007,9 +1007,66 @@ public partial class MainWindow : Window
     {
         if (BootAnimLibraryList.SelectedItem is BootAnimEntry entry)
         {
-            _bootLib.Remove(entry);
-            _app.SaveBootAnimLibrary(_bootLib.ToList());
+            _app.DeleteBootAnimEntry(entry);
+            RefreshBootAnimLibrary();
         }
+    }
+
+    private void BootAnimPreview_Click(object? sender, RoutedEventArgs e)
+    {
+        if (BootAnimLibraryList.SelectedItem is not BootAnimEntry entry) return;
+        try
+        {
+            if (File.Exists(entry.Path))
+                BootAnimPreviewImage.Source = new Avalonia.Media.Imaging.Bitmap(File.OpenRead(entry.Path));
+        }
+        catch { BootAnimPreviewImage.Source = null; }
+    }
+
+    private void BootAnimSetCurrent_Click(object? sender, RoutedEventArgs e)
+    {
+        if (BootAnimLibraryList.SelectedItem is not BootAnimEntry entry) return;
+        _app.Settings.Current.BootAnimStyle = "Image";
+        _app.Settings.Current.BootAnimPath = entry.Path;
+        _app.Settings.Save();
+        BootAnimPathBox.Text = entry.Path;
+        EnvStatusLabel.Text = $"开机动画已设为：{entry.Name}";
+    }
+
+    private async void BootAnimImport_Click(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "导入开机动画图片",
+            AllowMultiple = false,
+        });
+        if (files.Count == 0) return;
+        var entry = _app.ImportBootAnimImage(files[0].Path.LocalPath);
+        if (entry is null) EnvStatusLabel.Text = "导入失败";
+        else { RefreshBootAnimLibrary(); EnvStatusLabel.Text = $"已导入：{entry.Name}"; }
+    }
+
+    private async void AiGen_Click(object? sender, RoutedEventArgs e)
+    {
+        string prompt = (AiGenPromptBox.Text ?? "").Trim();
+        if (string.IsNullOrEmpty(prompt)) { AiGenStatusLabel.Text = "请输入 prompt"; return; }
+        AiGenButton.IsEnabled = false;
+        AiGenStatusLabel.Text = "正在生成…";
+        try
+        {
+            var entry = await _app.GenerateBootAnimImageAsync(prompt);
+            if (entry is null) AiGenStatusLabel.Text = "生成失败：请确认 BaseUrl/Key/Model 已配置且图像 API 可用";
+            else
+            {
+                RefreshBootAnimLibrary();
+                AiGenStatusLabel.Text = $"已生成并入：{entry.Name}";
+            }
+        }
+        catch (Exception ex)
+        {
+            AiGenStatusLabel.Text = $"生成异常：{ex.Message}";
+        }
+        finally { AiGenButton.IsEnabled = true; }
     }
 
     private void RefreshBootAnimLibrary()

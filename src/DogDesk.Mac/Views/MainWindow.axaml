@@ -236,6 +236,7 @@
                 <ComboBox x:Name="BootAnimStyleBox" Width="160" SelectionChanged="BootAnimStyle_SelectionChanged">
                   <ComboBoxItem Content="Aurora 极光"/>
                   <ComboBoxItem Content="Particle 粒子"/>
+                  <ComboBoxItem Content="Pulse 几何脉冲"/>
                   <ComboBoxItem Content="FlowText 流光文字"/>
                   <ComboBoxItem Content="Image 自定义图片"/>
                 </ComboBox>
@@ -251,8 +252,26 @@
               </StackPanel>
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <ListBox x:Name="BootAnimLibraryList" Width="360" Height="80"/>
-                <Button Content="删除所选" Click="BootAnimDelete_Click" VerticalAlignment="Top"/>
+                <StackPanel Orientation="Vertical" Spacing="4">
+                  <Button Content="预览所选" Click="BootAnimPreview_Click"/>
+                  <Button Content="设为当前" Click="BootAnimSetCurrent_Click"/>
+                  <Button Content="导入图片…" Click="BootAnimImport_Click"/>
+                  <Button Content="删除所选" Click="BootAnimDelete_Click"/>
+                </StackPanel>
               </StackPanel>
+              <Image x:Name="BootAnimPreviewImage" Height="120" Stretch="Uniform"/>
+              <Border Background="#1a1c2a" CornerRadius="6" Padding="8,6">
+                <StackPanel Spacing="4">
+                  <TextBlock FontSize="13" FontWeight="SemiBold" Text="AI 生成素材（第三方图像 API，仅供学习）"/>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="AiGenPromptBox" Width="360" Watermark="例如：梦幻极光，深空紫蓝渐变，极简抽象"/>
+                    <Button x:Name="AiGenButton" Content="生成并入库" Click="AiGen_Click"/>
+                  </StackPanel>
+                  <TextBlock x:Name="AiGenStatusLabel" Opacity="0.7" FontSize="12" Text="需在 AI 伙伴页配置 BaseUrl/Key/Model"/>
+                </StackPanel>
+              </Border>
+              <TextBlock FontSize="12" Opacity="0.6"
+                         Text="注：macOS 语音输入（STT）需系统级原生桥接，本版暂不支持，请使用文字输入。"/>
             </StackPanel>
           </Border>
 

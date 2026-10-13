@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>DogDesk</RootNamespace>
     <AssemblyName>DogDesk.Core</AssemblyName>
-    <Version>0.7.0</Version>
+    <Version>0.7.1</Version>
     <Description>DogDesk 跨平台共享核心：设置/歌词/频谱/播放队列/在线音源/均衡器/曲库（无 WPF 依赖）</Description>
   </PropertyGroup>
 
